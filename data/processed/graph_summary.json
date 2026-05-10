@@ -1,0 +1,51 @@
+{
+  "graph": {
+    "num_nodes": 1657,
+    "num_edges": 2783,
+    "density": 0.001014,
+    "num_components": 64,
+    "largest_component": 1353
+  },
+  "data": {
+    "total_rows": 142267,
+    "total_trips": 14817,
+    "sla_breach_rate": 0.8447,
+    "median_factor": 1.7,
+    "route_type_split": {
+      "FTL": 98729,
+      "Carting": 43538
+    }
+  },
+  "top5_bottleneck_hubs": [
+    {
+      "hub_id": "IND000000ACB",
+      "hub_name": "Gurgaon_Bilaspur_HB (Haryana)",
+      "state": "Haryana",
+      "bottleneck_score": 0.7330065830454009
+    },
+    {
+      "hub_id": "IND562132AAA",
+      "hub_name": "Bangalore_Nelmngla_H (Karnataka)",
+      "state": "Karnataka",
+      "bottleneck_score": 0.560320332410496
+    },
+    {
+      "hub_id": "IND493445AAB",
+      "hub_name": "Mahasamund_RajpurRD_D (Chhattisgarh)",
+      "state": "Chhattisgarh",
+      "bottleneck_score": 0.5030612242181817
+    },
+    {
+      "hub_id": "IND743270AAA",
+      "hub_name": "Helencha_ColnyDPP_D (West Bengal)",
+      "state": "West Bengal",
+      "bottleneck_score": 0.5030612242181817
+    },
+    {
+      "hub_id": "IND741201AAC",
+      "hub_name": "Ranaghat_ArickDPP_D (West Bengal)",
+      "state": "West Bengal",
+      "bottleneck_score": 0.5030612242181817
+    }
+  ]
+}

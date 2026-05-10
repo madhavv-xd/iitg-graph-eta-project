@@ -63,7 +63,7 @@ Traditional analytics aggregate metrics at the corridor or hub level but miss th
 
 ## Data Description
 
-### Source Data: `delivery_data.csv`
+### Source Data: `data/raw/delivery_data.csv`
 
 | Column | Description |
 |--------|-------------|
@@ -113,17 +113,17 @@ Median Delay Factor: 1.7x (deliveries take 70% longer than estimated)
 ┌─────────────────────────────────────────────────────────────────┐
 │                    DELIVERY NETWORK ANALYSIS                    │
 ├─────────────────────────────────────────────────────────────────┤
-│  PHASE 1: Data Pipeline & Graph Construction                    │
+│  PHASE 1: Data Pipeline & Graph Construction                   │
 │  ├── Data Cleaning & Preprocessing                              │
 │  ├── Feature Engineering (time buckets, SLA flags)              │
-│  ├── Corridor Aggregation (source → destination stats)         │
-│  ├── Graph Construction (NetworkX DiGraph)                     │
-│  └── Node Metrics Computation (centrality, delay, SLA)        │
+│  ├── Corridor Aggregation (source → destination stats)          │
+│  ├── Graph Construction (NetworkX DiGraph)                      │
+│  └── Node Metrics Computation (centrality, delay, SLA)         │
 ├─────────────────────────────────────────────────────────────────┤
 │  PHASE 2: Bottleneck & Corridor Audit                           │
-│  ├── Hub-Level Audit (bottleneck ranking, risk matrix)         │
-│  ├── Corridor-Level Audit (chronic delays, SLA contribution)  │
-│  └── Network-Level Audit (state patterns, time patterns)      │
+│  ├── Hub-Level Audit (bottleneck ranking, risk matrix)          │
+│  ├── Corridor-Level Audit (chronic delays, SLA contribution)   │
+│  └── Network-Level Audit (state patterns, time patterns)       │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -319,35 +319,50 @@ This matrix helps identify hubs in the "danger zone" (high betweenness + high SL
 .
 ├── README.md                      # This file
 ├── main.py                        # Main entry point (placeholder)
-├── delivery_data.csv             # Raw delivery data (142K records)
 ├── pyproject.toml                 # Project dependencies
-├── gnn.ipynb                       # Phase 1: Graph construction notebook
-├── gnn-phase2.ipynb               # Phase 2: Bottleneck audit notebook
+├── uv.lock                        # Locked dependencies
+├── .python-version                # Python version specification
 │
-├── outputs/                       # Generated output files
-│   ├── graph_summary.json         # Network statistics summary
-│   ├── delivery_network.graphml   # NetworkX graph (can be visualized in Gephi)
-│   ├── node_metrics.csv           # Per-hub metrics and bottleneck scores
-│   ├── corridor_aggregates.csv    # Per-corridor aggregated metrics
-│   ├── corridor_stratified.csv    # Corridor metrics stratified by route/time
-│   ├── train_clean.csv            # Cleaned training data
-│   ├── test_clean.csv             # Cleaned test data (if applicable)
-│   ├── chronic_corridors.csv      # Identified chronically delayed corridors
-│   ├── bottleneck_hubs_ranked.csv  # Ranked list of bottleneck hubs
-│   ├── sla_contribution.csv       # Corridor SLA contribution rankings
-│   │
-│   └── phase2_visuals/            # Phase 2 visualization outputs
+├── data/                          # Data directory
+│   ├── raw/                       # Raw data (input)
+│   │   └── delivery_data.csv      # Original delivery dataset
+│   └── processed/                # Processed data (output)
+│       ├── train_clean.csv        # Cleaned training data
+│       ├── test_clean.csv         # Cleaned test data
+│       ├── graph_summary.json     # Network statistics summary
+│       ├── delivery_network.graphml  # NetworkX graph file
+│       ├── node_metrics.csv       # Per-hub metrics and bottleneck scores
+│       ├── corridor_aggregates.csv # Per-corridor aggregated metrics
+│       ├── corridor_stratified.csv # Corridor metrics by route/time
+│       ├── chronic_corridors.csv  # Chronically delayed corridors
+│       ├── bottleneck_hubs_ranked.csv # Ranked bottleneck hubs
+│       └── sla_contribution.csv   # Corridor SLA contribution rankings
+│
+├── notebooks/                     # Jupyter notebooks
+│   ├── phase1_data_pipeline.ipynb # Phase 1: Graph construction
+│   └── phase2_bottleneck_audit.ipynb # Phase 2: Bottleneck analysis
+│
+├── src/                          # Python source code
+│   ├── __init__.py               # Package init
+│   ├── pipeline.py               # Data pipeline functions
+│   ├── features.py              # Feature engineering
+│   ├── graph_builder.py          # Graph construction
+│   ├── models.py                # (Reserved for ML models)
+│   └── utils.py                  # Utility functions
+│
+├── outputs/                      # Generated outputs
+│   └── phase2_visuals/          # Phase 2 visualization outputs
 │       ├── 01_bottleneck_hubs_ranked.png    # Top 20 bottleneck bar chart
-│       ├── 02_hub_risk_matrix.png            # Hub risk scatter plot
-│       ├── 03_chronic_corridors.png         # Top 20 chronic corridors
+│       ├── 02_hub_risk_matrix.png           # Hub risk scatter plot
+│       ├── 03_chronic_corridors.png        # Top 20 chronic corridors
 │       ├── 04_corridor_volume_vs_breach.png # Volume vs breach scatter
-│       ├── 05_state_heatmap.png             # State-level performance heatmap
-│       ├── 06_routetype_timebucket_heatmap.png  # Route/time heatmap
-│       ├── 07_ftl_vs_carting.png             # FTL vs Carting comparison
-│       ├── 08_delay_distribution.png        # Delay factor distribution
-│       └── 09_network_graph_top30.png        # Network visualization
+│       ├── 05_state_heatmap.png            # State-level performance heatmap
+│       ├── 06_routetype_timebucket_heatmap.png # Route/time heatmap
+│       ├── 07_ftl_vs_carting.png           # FTL vs Carting comparison
+│       ├── 08_delay_distribution.png       # Delay factor distribution
+│       └── 09_network_graph_top30.png      # Network visualization
 │
-└── .venv/                         # Python virtual environment
+└── .venv/                        # Python virtual environment
 ```
 
 ---
@@ -394,8 +409,8 @@ jupyter lab
 ```
 
 Then open and run the notebooks in order:
-1. `gnn.ipynb` - Phase 1: Graph construction and node metrics
-2. `gnn-phase2.ipynb` - Phase 2: Bottleneck and corridor audit with visualizations
+1. `notebooks/phase1_data_pipeline.ipynb` - Phase 1: Graph construction and node metrics
+2. `notebooks/phase2_bottleneck_audit.ipynb` - Phase 2: Bottleneck and corridor audit with visualizations
 
 ### Python Script (main.py)
 
@@ -409,17 +424,14 @@ python main.py
 
 ## Output Files
 
-### Graph Files
+### Processed Data Files (in `data/processed/`)
 
 | File | Description |
 |------|-------------|
-| `delivery_network.graphml` | NetworkX DiGraph with all node/edge attributes. Can be loaded in Gephi for advanced visualization. |
+| `train_clean.csv` | Cleaned training data with engineered features |
+| `test_clean.csv` | Cleaned test data |
 | `graph_summary.json` | Quick reference for key network statistics in JSON format |
-
-### Data Files
-
-| File | Description |
-|------|-------------|
+| `delivery_network.graphml` | NetworkX DiGraph with all node/edge attributes |
 | `node_metrics.csv` | Per-hub metrics: ID, name, state, degrees, betweenness, delay, SLA, bottleneck score |
 | `corridor_aggregates.csv` | Per-corridor metrics: source, destination, trip count, delay factors, SLA rate |
 | `corridor_stratified.csv` | Corridor metrics broken down by route_type and time_bucket |
@@ -427,7 +439,7 @@ python main.py
 | `bottleneck_hubs_ranked.csv` | All hubs ranked by bottleneck score |
 | `sla_contribution.csv` | Corridors ranked by SLA contribution (absolute late deliveries) |
 
-### Visualization Files
+### Visualization Files (in `outputs/phase2_visuals/`)
 
 See [Visualization Reference](#visualization-reference) below for details on each chart.
 
@@ -435,17 +447,17 @@ See [Visualization Reference](#visualization-reference) below for details on eac
 
 ## Visualization Reference
 
-| Chart | File | Description |
-|-------|------|-------------|
-| Bottleneck Ranking | `01_bottleneck_hubs_ranked.png` | Horizontal bar chart showing top 20 bottleneck hubs by score |
-| Hub Risk Matrix | `02_hub_risk_matrix.png` | Scatter plot: betweenness (x) vs SLA breach (y), bubble size = out-degree |
-| Chronic Corridors | `03_chronic_corridors.png` | Top 20 corridors by SLA contribution (absolute late deliveries) |
-| Volume vs Breach | `04_corridor_volume_vs_breach.png` | Scatter: trip count (x) vs SLA breach (y), color = delay factor |
-| State Heatmap | `05_state_heatmap.png` | Performance heatmap by state |
-| Route-Time Heatmap | `06_routetype_timebucket_heatmap.png` | Delay patterns by route type and time of day |
-| FTL vs Carting | `07_ftl_vs_carting.png` | Comparison of two transportation modes |
-| Delay Distribution | `08_delay_distribution.png` | Distribution of delay factors across network |
-| Network Graph | `09_network_graph_top30.png` | Visual representation of top 30 hubs and their connections |
+| # | Chart | Description |
+|---|-------|-------------|
+| 01 | Bottleneck Ranking | Horizontal bar chart showing top 20 bottleneck hubs by score |
+| 02 | Hub Risk Matrix | Scatter plot: betweenness (x) vs SLA breach (y), bubble size = out-degree |
+| 03 | Chronic Corridors | Top 20 corridors by SLA contribution (absolute late deliveries) |
+| 04 | Volume vs Breach | Scatter: trip count (x) vs SLA breach (y), color = delay factor |
+| 05 | State Heatmap | Performance heatmap by state |
+| 06 | Route-Time Heatmap | Delay patterns by route type and time of day |
+| 07 | FTL vs Carting | Comparison of two transportation modes |
+| 08 | Delay Distribution | Distribution of delay factors across network |
+| 09 | Network Graph | Visual representation of top 30 hubs and their connections |
 
 ---
 

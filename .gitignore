@@ -14,28 +14,29 @@ eggs/
 # Virtual environments
 venv/
 env/
-.env
-.venv
 ENV/
+.venv/
 
 # Jupyter
 .ipynb_checkpoints/
-*/.ipynb_checkpoints/*
 *.ipynb_checkpoints
+.dip/
 
 # Data files — too large for git
-data/
-outputs/
-*.csv
-*.graphml
-*.json
+data/raw/
+data/processed/*.csv
+data/processed/*.graphml
+data/processed/*.json
 *.parquet
 *.feather
 *.pkl
 *.pickle
 
 # But keep the summary json — it's small and useful
-!outputs/graph_summary.json
+!data/processed/graph_summary.json
+
+# Outputs (generated visualizations)
+outputs/phase2_visuals/*.png
 
 # OS files
 .DS_Store
