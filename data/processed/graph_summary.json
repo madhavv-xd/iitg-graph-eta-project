@@ -21,24 +21,24 @@
       "hub_id": "IND000000ACB",
       "hub_name": "Gurgaon_Bilaspur_HB (Haryana)",
       "state": "Haryana",
-      "bottleneck_score": 0.7330065830454009
+      "bottleneck_score": 0.7330065830154295
     },
     {
       "hub_id": "IND562132AAA",
       "hub_name": "Bangalore_Nelmngla_H (Karnataka)",
       "state": "Karnataka",
-      "bottleneck_score": 0.560320332410496
-    },
-    {
-      "hub_id": "IND493445AAB",
-      "hub_name": "Mahasamund_RajpurRD_D (Chhattisgarh)",
-      "state": "Chhattisgarh",
-      "bottleneck_score": 0.5030612242181817
+      "bottleneck_score": 0.5756726833123526
     },
     {
       "hub_id": "IND743270AAA",
       "hub_name": "Helencha_ColnyDPP_D (West Bengal)",
       "state": "West Bengal",
+      "bottleneck_score": 0.5047298358894113
+    },
+    {
+      "hub_id": "IND482002AAA",
+      "hub_name": "Jabalpur (Madhya Pradesh)",
+      "state": "Madhya Pradesh",
       "bottleneck_score": 0.5030612242181817
     },
     {
