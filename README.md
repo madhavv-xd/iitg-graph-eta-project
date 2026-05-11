@@ -10,7 +10,8 @@ A comprehensive graph-based network analysis system for identifying bottleneck h
 4. [Architecture](#architecture)
 5. [Phase 1: Data Pipeline & Graph Construction](#phase-1-data-pipeline--graph-construction)
 6. [Phase 2: Bottleneck & Corridor Audit](#phase-2-bottleneck--corridor-audit)
-7. [Key Findings](#key-findings)
+7. [Phase 3: Graph-Enhanced ETA Prediction](#phase-3-graph-enhanced-eta-prediction)
+8. [Key Findings](#key-findings)
 8. [Project Structure](#project-structure)
 9. [Installation & Setup](#installation--setup)
 10. [Usage](#usage)
@@ -107,7 +108,7 @@ Median Delay Factor: 1.7x (deliveries take 70% longer than estimated)
 
 ## Architecture
 
-### Two-Phase Approach
+### Three-Phase Approach
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -124,6 +125,12 @@ Median Delay Factor: 1.7x (deliveries take 70% longer than estimated)
 │  ├── Hub-Level Audit (bottleneck ranking, risk matrix)          │
 │  ├── Corridor-Level Audit (chronic delays, SLA contribution)   │
 │  └── Network-Level Audit (state patterns, time patterns)       │
+├─────────────────────────────────────────────────────────────────┤
+│  PHASE 3: Graph-Enhanced ETA Prediction                         │
+│  ├── Baseline XGBoost (trip-level features only)                │
+│  ├── Node2Vec Embeddings (learn graph structure)                │
+│  ├── Graph-Enhanced XGBoost (features + graph embeddings)        │
+│  └── Model Comparison & Evaluation                              │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -268,6 +275,109 @@ This matrix helps identify hubs in the "danger zone" (high betweenness + high SL
 
 ---
 
+## Phase 3: Graph-Enhanced ETA Prediction
+
+### Overview
+
+Phase 3 builds on the graph constructed in Phase 1 to create an **ETA (Estimated Time of Arrival) prediction model**. The key innovation is comparing two approaches:
+
+1. **Baseline XGBoost**: Uses only trip-level features (distance, route type, time of day)
+2. **Graph-Enhanced XGBoost**: Augments trip features with graph-derived embeddings and metrics
+
+The goal is to demonstrate that incorporating graph structure improves prediction accuracy.
+
+### Step 1: Baseline Model (Trip-Level Features)
+
+The baseline model uses standard trip features:
+
+| Feature | Description |
+|---------|-------------|
+| `segment_osrm_time` | OSRM-estimated time (hours) |
+| `segment_osrm_distance` | Distance (km) |
+| `route_type` | FTL or Carting (encoded) |
+| `time_bucket` | Time of day category (encoded) |
+| `day_of_week` | Day of week from `od_start_time` |
+| `is_weekend` | Binary weekend flag |
+
+### Step 2: Node2Vec Embeddings
+
+**Node2Vec** is used to learn low-dimensional vector representations of each hub (node) that capture graph structure:
+
+```python
+from node2vec import Node2Vec
+
+node2vec = Node2Vec(G, dimensions=64, walk_length=30, num_walks=200, workers=1)
+model = node2vec.fit(window=10, min_count=1)
+```
+
+- **dimensions**: 64 (embedding size)
+- **walk_length**: 30 (each random walk has 30 nodes)
+- **num_walks**: 200 (200 walks per node)
+- **Algorithm**: Combines BFS and DFS to capture both local and global structure
+
+The resulting embeddings capture:
+- Structural similarity between hubs
+- Connectivity patterns in the network
+- Proximity in terms of both topology and delay behavior
+
+### Step 3: Graph-Enhanced Features
+
+For each trip, we augment the baseline features with:
+
+| Feature | Source |
+|---------|--------|
+| `source_embedding` | Node2Vec embedding of source hub |
+| `dest_embedding` | Node2Vec embedding of destination hub |
+| `source_betweenness` | Betweenness centrality of source hub |
+| `dest_betweenness` | Betweenness centrality of destination hub |
+| `source_out_degree` | Out-degree of source hub |
+| `dest_in_degree` | In-degree of destination hub |
+| `corridor_median_factor` | Historical delay factor for this corridor |
+| `corridor_sla_breach` | Historical SLA breach rate for this corridor |
+
+This creates a **64 + 64 + 6 = 134** dimensional feature space for the enhanced model.
+
+### Step 4: Model Training & Evaluation
+
+Both models use XGBoost regressor with identical hyperparameters:
+
+```python
+model = XGBRegressor(
+    n_estimators=200,
+    max_depth=8,
+    learning_rate=0.1,
+    subsample=0.8,
+    colsample_bytree=0.8,
+    random_state=42
+)
+```
+
+### Results
+
+| Model | MAE | RMSE | 15% Accuracy |
+|-------|-----|------|---------------|
+| **Baseline XGBoost** | 0.829 | 1.447 | 23.83% |
+| **Graph-Enhanced XGBoost** | 0.699 | 1.233 | 30.86% |
+
+**Improvement**:
+- **15.7% better MAE** (0.829 → 0.699)
+- **14.8% better RMSE** (1.447 → 1.233)
+- **29.5% better 15% accuracy** (23.83% → 30.86%)
+
+The graph-enhanced model significantly outperforms the baseline, proving that graph structure adds predictive value beyond trip-level features alone.
+
+### Key Insights
+
+1. **Node2Vec embeddings capture delay patterns**: Hubs with similar structural roles (similar embeddings) tend to have similar delay behaviors.
+
+2. **Betweenness centrality is predictive**: A hub's structural importance (betweenness) correlates with its delay characteristics.
+
+3. **Corridor history matters**: Including the historical median delay factor of the specific corridor provides strong signal.
+
+4. **Graph features bridge data gaps**: For new routes with no historical data, the embeddings can still provide reasonable estimates based on similar hubs.
+
+---
+
 ## Key Findings
 
 ### Network Topology
@@ -340,7 +450,8 @@ This matrix helps identify hubs in the "danger zone" (high betweenness + high SL
 │
 ├── notebooks/                     # Jupyter notebooks
 │   ├── phase1_data_pipeline.ipynb # Phase 1: Graph construction
-│   └── phase2_bottleneck_audit.ipynb # Phase 2: Bottleneck analysis
+│   ├── phase2_bottleneck_audit.ipynb # Phase 2: Bottleneck analysis
+│   └── phase3_graph_models.ipynb  # Phase 3: ETA prediction model
 │
 ├── src/                          # Python source code
 │   ├── __init__.py               # Package init
@@ -351,16 +462,22 @@ This matrix helps identify hubs in the "danger zone" (high betweenness + high SL
 │   └── utils.py                  # Utility functions
 │
 ├── outputs/                      # Generated outputs
-│   └── phase2_visuals/          # Phase 2 visualization outputs
-│       ├── 01_bottleneck_hubs_ranked.png    # Top 20 bottleneck bar chart
-│       ├── 02_hub_risk_matrix.png           # Hub risk scatter plot
-│       ├── 03_chronic_corridors.png        # Top 20 chronic corridors
-│       ├── 04_corridor_volume_vs_breach.png # Volume vs breach scatter
-│       ├── 05_state_heatmap.png            # State-level performance heatmap
-│       ├── 06_routetype_timebucket_heatmap.png # Route/time heatmap
-│       ├── 07_ftl_vs_carting.png           # FTL vs Carting comparison
-│       ├── 08_delay_distribution.png       # Delay factor distribution
-│       └── 09_network_graph_top30.png      # Network visualization
+│   ├── phase2_visuals/          # Phase 2 visualization outputs
+│   │   ├── 01_bottleneck_hubs_ranked.png    # Top 20 bottleneck bar chart
+│   │   ├── 02_hub_risk_matrix.png           # Hub risk scatter plot
+│   │   ├── 03_chronic_corridors.png        # Top 20 chronic corridors
+│   │   ├── 04_corridor_volume_vs_breach.png # Volume vs breach scatter
+│   │   ├── 05_state_heatmap.png            # State-level performance heatmap
+│   │   ├── 06_routetype_timebucket_heatmap.png # Route/time heatmap
+│   │   ├── 07_ftl_vs_carting.png           # FTL vs Carting comparison
+│   │   ├── 08_delay_distribution.png       # Delay factor distribution
+│   │   └── 09_network_graph_top30.png      # Network visualization
+│   └── phase3_visuals/          # Phase 3 model outputs
+│       ├── 01_model_comparison.png        # Baseline vs Graph-Enhanced comparison
+│       ├── 02_predicted_vs_actual.png      # Prediction scatter plot
+│       ├── 03_feature_importance.png       # XGBoost feature importance
+│       ├── 04_residuals.png                # Residual analysis
+│       └── 05_error_distribution.png       # Error distribution by model
 │
 └── .venv/                        # Python virtual environment
 ```
@@ -391,10 +508,12 @@ ipykernel>=7.2.0
 jupyterlab>=4.5.7
 matplotlib>=3.10.9
 networkx>=3.6.1
+node2vec>=0.4.3
 numpy>=2.4.4
 pandas>=3.0.2
 scikit-learn>=1.8.0
 seaborn>=0.13.2
+xgboost>=3.2.0
 ```
 
 ---
@@ -411,6 +530,7 @@ jupyter lab
 Then open and run the notebooks in order:
 1. `notebooks/phase1_data_pipeline.ipynb` - Phase 1: Graph construction and node metrics
 2. `notebooks/phase2_bottleneck_audit.ipynb` - Phase 2: Bottleneck and corridor audit with visualizations
+3. `notebooks/phase3_graph_models.ipynb` - Phase 3: Graph-enhanced ETA prediction model
 
 ### Python Script (main.py)
 
@@ -442,6 +562,26 @@ python main.py
 ### Visualization Files (in `outputs/phase2_visuals/`)
 
 See [Visualization Reference](#visualization-reference) below for details on each chart.
+
+### Phase 3 Model Files (in `data/processed/`)
+
+| File | Description |
+|------|-------------|
+| `node2vec_embeddings.csv` | 64-dimensional Node2Vec embeddings for all 1,657 hubs |
+| `baseline_model.json` | Trained baseline XGBoost model (trip features only) |
+| `enhanced_model.json` | Trained graph-enhanced XGBoost model |
+| `test_predictions.csv` | Predictions on test set from both models |
+| `model_benchmark.csv` | Comparison metrics (MAE, RMSE, 15% accuracy) |
+
+### Phase 3 Visualization Files (in `outputs/phase3_visuals/`)
+
+| # | Chart | Description |
+|---|-------|-------------|
+| 01 | Model Comparison | Bar chart comparing Baseline vs Graph-Enhanced metrics |
+| 02 | Predicted vs Actual | Scatter plot of predicted vs actual delay factors |
+| 03 | Feature Importance | Top 20 XGBoost feature importance scores |
+| 04 | Residuals | Residual analysis for both models |
+| 05 | Error Distribution | Histogram of prediction errors by model |
 
 ---
 
