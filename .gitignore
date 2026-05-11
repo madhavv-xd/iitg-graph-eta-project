@@ -37,6 +37,10 @@ data/processed/*.json
 
 # Outputs (generated visualizations)
 outputs/phase2_visuals/*.png
+outputs/phase3_visuals/*.png
+outputs/phase4_visuals/*.png
+outputs/phase5_visuals/*.png
+outputs/phase6_visuals/*.png
 
 # OS files
 .DS_Store
