@@ -1,0 +1,102 @@
+{
+  "overview": {
+    "total_hubs": 1657, "total_corridors": 2783, "total_trips": 14817,
+    "sla_breach_rate": 0.8447, "median_delay_factor": 1.7,
+    "chronic_corridors": 953, "revenue_at_risk_cr": 11.4,
+    "recoverable_cr": 2.3, "late_per_day": 417
+  },
+  "benchmark": [
+    { "model": "Baseline",       "MAE": 0.829014, "RMSE": 1.447726, "15%_accuracy": 0.240017 },
+    { "model": "Graph-Enhanced", "MAE": 0.699850, "RMSE": 1.235435, "15%_accuracy": 0.308812 }
+  ],
+  "top5_hubs": [
+    { "hub_name": "Gurgaon_Bilaspur_HB (Haryana)",      "state": "Haryana",     "betweenness_centrality": 0.346,  "avg_outgoing_sla_breach": 0.7941, "avg_outgoing_factor": 1.5995, "bottleneck_score": 0.733, "in_degree": 45, "out_degree": 49 },
+    { "hub_name": "Bangalore_Nelmngla_H (Karnataka)",    "state": "Karnataka",   "betweenness_centrality": 0.2371, "avg_outgoing_sla_breach": 0.7741, "avg_outgoing_factor": 1.5438, "bottleneck_score": 0.574, "in_degree": 36, "out_degree": 35 },
+    { "hub_name": "Helencha_ColnyDPP_D (West Bengal)",   "state": "West Bengal", "betweenness_centrality": 0.0016, "avg_outgoing_sla_breach": 1.0,    "avg_outgoing_factor": 11.6,   "bottleneck_score": 0.505, "in_degree": 1,  "out_degree": 1  },
+    { "hub_name": "Mariani_Mainroad_D (Assam)",          "state": "Assam",       "betweenness_centrality": 0.0,    "avg_outgoing_sla_breach": 1.0,    "avg_outgoing_factor": 11.6,   "bottleneck_score": 0.503, "in_degree": 1,  "out_degree": 1  },
+    { "hub_name": "Simlapal_Central_D_1 (West Bengal)",  "state": "West Bengal", "betweenness_centrality": 0.0,    "avg_outgoing_sla_breach": 1.0,    "avg_outgoing_factor": 11.6,   "bottleneck_score": 0.503, "in_degree": 1,  "out_degree": 1  }
+  ],
+  "top20_chronic": [
+    { "corridor_label": "Bangalore → Bengaluru",               "median_factor": 1.455, "sla_breach_rate": 0.743, "trip_count": 151, "sla_contribution": 112.16 },
+    { "corridor_label": "Bhiwandi → Mumbai Hub (Maharashtra)",  "median_factor": 2.236, "sla_breach_rate": 0.969, "trip_count": 105, "sla_contribution": 101.72 },
+    { "corridor_label": "Mumbai → Bhiwandi",                   "median_factor": 2.477, "sla_breach_rate": 0.979, "trip_count": 99,  "sla_contribution": 96.92  },
+    { "corridor_label": "Bangalore → Bengaluru",               "median_factor": 1.440, "sla_breach_rate": 0.746, "trip_count": 127, "sla_contribution": 94.69  },
+    { "corridor_label": "Bengaluru → Bengaluru",               "median_factor": 1.529, "sla_breach_rate": 0.704, "trip_count": 121, "sla_contribution": 85.20  },
+    { "corridor_label": "Pune → Bhiwandi",                     "median_factor": 1.379, "sla_breach_rate": 0.740, "trip_count": 107, "sla_contribution": 79.17  },
+    { "corridor_label": "Bhiwandi → Mumbai",                   "median_factor": 2.444, "sla_breach_rate": 1.000, "trip_count": 78,  "sla_contribution": 78.00  },
+    { "corridor_label": "Bengaluru → Bangalore",               "median_factor": 1.400, "sla_breach_rate": 0.739, "trip_count": 102, "sla_contribution": 75.34  },
+    { "corridor_label": "Mumbai Hub (Maharashtra) → Mumbai",   "median_factor": 2.714, "sla_breach_rate": 0.993, "trip_count": 72,  "sla_contribution": 71.50  },
+    { "corridor_label": "Bengaluru → Bangalore",               "median_factor": 1.364, "sla_breach_rate": 0.649, "trip_count": 108, "sla_contribution": 70.08  },
+    { "corridor_label": "Mumbai → Mumbai Hub (Maharashtra)",   "median_factor": 2.375, "sla_breach_rate": 0.962, "trip_count": 68,  "sla_contribution": 65.42  },
+    { "corridor_label": "Pune → Mumbai Hub (Maharashtra)",     "median_factor": 1.850, "sla_breach_rate": 0.884, "trip_count": 73,  "sla_contribution": 64.53  },
+    { "corridor_label": "Bhiwandi → Pune",                     "median_factor": 1.794, "sla_breach_rate": 0.878, "trip_count": 74,  "sla_contribution": 65.00  },
+    { "corridor_label": "Delhi → Gurgaon",                     "median_factor": 2.100, "sla_breach_rate": 0.920, "trip_count": 65,  "sla_contribution": 59.80  },
+    { "corridor_label": "Chennai → Bengaluru",                 "median_factor": 1.680, "sla_breach_rate": 0.810, "trip_count": 71,  "sla_contribution": 57.51  },
+    { "corridor_label": "Hyderabad → Bengaluru",               "median_factor": 1.560, "sla_breach_rate": 0.795, "trip_count": 69,  "sla_contribution": 54.86  },
+    { "corridor_label": "Mumbai → Pune",                       "median_factor": 1.920, "sla_breach_rate": 0.890, "trip_count": 58,  "sla_contribution": 51.62  },
+    { "corridor_label": "Kolkata → Helencha",                  "median_factor": 4.500, "sla_breach_rate": 1.000, "trip_count": 48,  "sla_contribution": 48.00  },
+    { "corridor_label": "Gurgaon → Delhi",                     "median_factor": 1.980, "sla_breach_rate": 0.880, "trip_count": 52,  "sla_contribution": 45.76  },
+    { "corridor_label": "Ahmedabad → Mumbai",                  "median_factor": 1.720, "sla_breach_rate": 0.840, "trip_count": 53,  "sla_contribution": 44.52  }
+  ],
+  "state_stats": [
+    { "state": "Mizoram",           "avg_sla_breach": 1.00, "hub_count": 3  },
+    { "state": "Nagaland",          "avg_sla_breach": 0.99, "hub_count": 4  },
+    { "state": "Manipur",           "avg_sla_breach": 0.98, "hub_count": 5  },
+    { "state": "Dadra and Nagar Haveli", "avg_sla_breach": 0.97, "hub_count": 3 },
+    { "state": "Assam",             "avg_sla_breach": 0.96, "hub_count": 35 },
+    { "state": "Tripura",           "avg_sla_breach": 0.95, "hub_count": 6  },
+    { "state": "Meghalaya",         "avg_sla_breach": 0.94, "hub_count": 4  },
+    { "state": "West Bengal",       "avg_sla_breach": 0.91, "hub_count": 114 },
+    { "state": "Bihar",             "avg_sla_breach": 0.90, "hub_count": 74 },
+    { "state": "Jharkhand",         "avg_sla_breach": 0.89, "hub_count": 42 },
+    { "state": "Odisha",            "avg_sla_breach": 0.88, "hub_count": 55 },
+    { "state": "Uttar Pradesh",     "avg_sla_breach": 0.87, "hub_count": 165 },
+    { "state": "Maharashtra",       "avg_sla_breach": 0.86, "hub_count": 152 },
+    { "state": "Rajasthan",         "avg_sla_breach": 0.85, "hub_count": 105 },
+    { "state": "Karnataka",         "avg_sla_breach": 0.84, "hub_count": 134 }
+  ],
+  "graph": {
+    "nodes": [
+      { "id":"n1", "name":"Gurgaon",    "state":"Haryana",     "bottleneck_score":0.733, "betweenness":0.346,  "sla_breach":0.794, "delay_factor":1.60, "in_degree":45, "out_degree":49, "rank":1 },
+      { "id":"n2", "name":"Bangalore",  "state":"Karnataka",   "bottleneck_score":0.574, "betweenness":0.237,  "sla_breach":0.774, "delay_factor":1.54, "in_degree":36, "out_degree":35, "rank":2 },
+      { "id":"n3", "name":"Helencha",   "state":"W Bengal",    "bottleneck_score":0.505, "betweenness":0.002,  "sla_breach":1.000, "delay_factor":11.6, "in_degree":1,  "out_degree":1,  "rank":3 },
+      { "id":"n4", "name":"Mariani",    "state":"Assam",       "bottleneck_score":0.503, "betweenness":0.000,  "sla_breach":1.000, "delay_factor":11.6, "in_degree":1,  "out_degree":1,  "rank":4 },
+      { "id":"n5", "name":"Simlapal",   "state":"W Bengal",    "bottleneck_score":0.503, "betweenness":0.000,  "sla_breach":1.000, "delay_factor":11.6, "in_degree":1,  "out_degree":1,  "rank":5 },
+      { "id":"n6", "name":"Mumbai",     "state":"Maharashtra", "bottleneck_score":0.48,  "betweenness":0.180,  "sla_breach":0.920, "delay_factor":2.10, "in_degree":28, "out_degree":30, "rank":6 },
+      { "id":"n7", "name":"Delhi",      "state":"Delhi",       "bottleneck_score":0.46,  "betweenness":0.160,  "sla_breach":0.870, "delay_factor":1.90, "in_degree":25, "out_degree":27, "rank":7 },
+      { "id":"n8", "name":"Bhiwandi",   "state":"Maharashtra", "bottleneck_score":0.44,  "betweenness":0.140,  "sla_breach":0.960, "delay_factor":2.30, "in_degree":20, "out_degree":22, "rank":8 },
+      { "id":"n9", "name":"Chennai",    "state":"Tamil Nadu",  "bottleneck_score":0.42,  "betweenness":0.130,  "sla_breach":0.840, "delay_factor":1.70, "in_degree":22, "out_degree":24, "rank":9 },
+      { "id":"n10","name":"Hyderabad",  "state":"Telangana",   "bottleneck_score":0.40,  "betweenness":0.120,  "sla_breach":0.830, "delay_factor":1.65, "in_degree":20, "out_degree":21, "rank":10 },
+      { "id":"n11","name":"Kolkata",    "state":"W Bengal",    "bottleneck_score":0.38,  "betweenness":0.110,  "sla_breach":0.850, "delay_factor":1.80, "in_degree":18, "out_degree":19, "rank":11 },
+      { "id":"n12","name":"Ahmedabad",  "state":"Gujarat",     "bottleneck_score":0.36,  "betweenness":0.100,  "sla_breach":0.820, "delay_factor":1.72, "in_degree":17, "out_degree":18, "rank":12 },
+      { "id":"n13","name":"Pune",       "state":"Maharashtra", "bottleneck_score":0.34,  "betweenness":0.090,  "sla_breach":0.810, "delay_factor":1.68, "in_degree":15, "out_degree":16, "rank":13 },
+      { "id":"n14","name":"Jaipur",     "state":"Rajasthan",   "bottleneck_score":0.32,  "betweenness":0.080,  "sla_breach":0.800, "delay_factor":1.65, "in_degree":14, "out_degree":15, "rank":14 },
+      { "id":"n15","name":"Lucknow",    "state":"UP",          "bottleneck_score":0.30,  "betweenness":0.070,  "sla_breach":0.790, "delay_factor":1.60, "in_degree":13, "out_degree":14, "rank":15 }
+    ],
+    "edges": [
+      { "source":"n1", "target":"n6", "weight":1.8 }, { "source":"n1", "target":"n7", "weight":1.6 },
+      { "source":"n2", "target":"n9", "weight":1.7 }, { "source":"n2", "target":"n10", "weight":1.6 },
+      { "source":"n6", "target":"n8", "weight":2.1 }, { "source":"n6", "target":"n13", "weight":1.9 },
+      { "source":"n7", "target":"n1", "weight":1.5 }, { "source":"n7", "target":"n14", "weight":1.7 },
+      { "source":"n8", "target":"n6", "weight":2.3 }, { "source":"n9", "target":"n2", "weight":1.6 },
+      { "source":"n11","target":"n3", "weight":4.5 }, { "source":"n11","target":"n5", "weight":4.2 },
+      { "source":"n4", "target":"n11","weight":5.0 }, { "source":"n10","target":"n2", "weight":1.7 },
+      { "source":"n13","target":"n8", "weight":2.0 }, { "source":"n12","target":"n6", "weight":1.8 },
+      { "source":"n14","target":"n7", "weight":1.6 }, { "source":"n15","target":"n7", "weight":1.7 }
+    ]
+  },
+  "time_performance": [
+    { "route_type":"FTL",    "time_bucket":"night",         "avg_sla":0.88, "avg_factor":1.92 },
+    { "route_type":"FTL",    "time_bucket":"early_morning", "avg_sla":0.86, "avg_factor":1.85 },
+    { "route_type":"FTL",    "time_bucket":"morning",       "avg_sla":0.85, "avg_factor":1.80 },
+    { "route_type":"FTL",    "time_bucket":"afternoon",     "avg_sla":0.84, "avg_factor":1.75 },
+    { "route_type":"FTL",    "time_bucket":"evening",       "avg_sla":0.86, "avg_factor":1.82 },
+    { "route_type":"FTL",    "time_bucket":"late_night",    "avg_sla":0.87, "avg_factor":1.88 },
+    { "route_type":"Carting","time_bucket":"night",         "avg_sla":0.93, "avg_factor":2.20 },
+    { "route_type":"Carting","time_bucket":"early_morning", "avg_sla":0.90, "avg_factor":2.10 },
+    { "route_type":"Carting","time_bucket":"morning",       "avg_sla":0.88, "avg_factor":2.00 },
+    { "route_type":"Carting","time_bucket":"afternoon",     "avg_sla":0.86, "avg_factor":1.95 },
+    { "route_type":"Carting","time_bucket":"evening",       "avg_sla":0.89, "avg_factor":2.05 },
+    { "route_type":"Carting","time_bucket":"late_night",    "avg_sla":0.92, "avg_factor":2.15 }
+  ]
+}

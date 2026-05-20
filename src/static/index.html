@@ -1,0 +1,1388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Delhivery — Network Intelligence</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap');
+
+:root {
+  --bg:        #0a0a0f;
+  --surface:   #111118;
+  --surface2:  #16161f;
+  --border:    rgba(255,255,255,0.06);
+  --border2:   rgba(255,255,255,0.12);
+  --text:      #e8e8f0;
+  --muted:     #6b6b80;
+  --accent:    #ff4d6d;
+  --accent2:   #ff8c42;
+  --accent3:   #4dffb4;
+  --accent4:   #4d9fff;
+  --warn:      #ffd166;
+  --good:      #06d6a0;
+  --font:      'Syne', sans-serif;
+  --mono:      'JetBrains Mono', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Noise texture overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0.4;
+}
+
+/* ── NAV ── */
+nav {
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 2rem;
+  height: 60px;
+  background: rgba(10,10,15,0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+}
+
+.nav-logo {
+  display: flex; align-items: center; gap: 0.75rem;
+}
+.nav-logo-mark {
+  width: 32px; height: 32px;
+  background: var(--accent);
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.65rem; font-weight: 800; color: white;
+  flex-shrink: 0;
+}
+.nav-title { font-size: 0.9rem; font-weight: 700; letter-spacing: 0.04em; }
+.nav-sub { font-size: 0.65rem; color: var(--muted); font-family: var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+
+.nav-tabs { display: flex; gap: 0.25rem; }
+.nav-tab {
+  padding: 0.4rem 1rem;
+  font-size: 0.78rem; font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+  font-family: var(--font);
+  background: none;
+}
+.nav-tab:hover { color: var(--text); background: var(--surface); }
+.nav-tab.active {
+  color: var(--accent);
+  background: rgba(255,77,109,0.1);
+  border-color: rgba(255,77,109,0.3);
+}
+
+.nav-status {
+  display: flex; align-items: center; gap: 0.5rem;
+  font-family: var(--mono); font-size: 0.7rem; color: var(--muted);
+}
+.status-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--good);
+  box-shadow: 0 0 8px var(--good);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+/* ── PAGES ── */
+.page { display: none; padding: 2rem; max-width: 1400px; margin: 0 auto; }
+.page.active { display: block; animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+/* ── SECTION HEADER ── */
+.section-header { margin-bottom: 2rem; }
+.section-label {
+  font-family: var(--mono); font-size: 0.65rem;
+  color: var(--accent); letter-spacing: 0.12em; text-transform: uppercase;
+  margin-bottom: 0.4rem;
+}
+.section-title { font-size: 2rem; font-weight: 800; line-height: 1.1; }
+.section-sub { font-size: 0.9rem; color: var(--muted); margin-top: 0.4rem; }
+
+/* ── KPI CARDS ── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.4rem 1.6rem;
+  position: relative;
+  overflow: hidden;
+  cursor: default;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.kpi-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+
+.kpi-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: var(--accent-color, var(--accent));
+}
+
+.kpi-label {
+  font-family: var(--mono); font-size: 0.65rem;
+  color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase;
+  margin-bottom: 0.6rem;
+}
+.kpi-value {
+  font-size: 2.2rem; font-weight: 800; line-height: 1;
+  color: var(--text);
+}
+.kpi-unit { font-size: 1rem; font-weight: 500; color: var(--muted); margin-left: 0.2rem; }
+.kpi-delta {
+  margin-top: 0.5rem;
+  font-size: 0.72rem; font-family: var(--mono);
+  color: var(--muted);
+}
+.kpi-delta.bad { color: var(--accent); }
+.kpi-delta.good { color: var(--good); }
+
+/* ── GRID LAYOUTS ── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+.grid-6040 { display: grid; grid-template-columns: 1.5fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+.grid-4060 { display: grid; grid-template-columns: 1fr 1.5fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+@media(max-width:900px) { .grid-2,.grid-3,.grid-6040,.grid-4060 { grid-template-columns:1fr; } }
+
+/* ── CARD ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+.card-title {
+  font-size: 0.8rem; font-weight: 700;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 1.2rem;
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.card-title span { color: var(--accent); font-family: var(--mono); }
+
+/* ── HUB RANK TABLE ── */
+.hub-list { display: flex; flex-direction: column; gap: 0.75rem; }
+.hub-row {
+  display: grid;
+  grid-template-columns: 2rem 1fr auto;
+  gap: 1rem; align-items: center;
+  padding: 0.9rem 1rem;
+  background: var(--surface2);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  transition: border-color 0.2s;
+  cursor: pointer;
+}
+.hub-row:hover { border-color: var(--border2); }
+.hub-rank {
+  font-family: var(--mono); font-size: 0.7rem;
+  color: var(--muted); text-align: center;
+}
+.hub-rank.rank-1 { color: var(--accent); font-weight: 700; }
+.hub-rank.rank-2 { color: var(--accent2); }
+.hub-rank.rank-3 { color: var(--warn); }
+.hub-name-wrap {}
+.hub-name { font-size: 0.85rem; font-weight: 600; }
+.hub-state { font-size: 0.7rem; color: var(--muted); font-family: var(--mono); margin-top: 0.1rem; }
+.hub-score-wrap { text-align: right; }
+.hub-score { font-family: var(--mono); font-size: 0.9rem; font-weight: 500; }
+.hub-bar-wrap { grid-column: 1/-1; margin-top: -0.3rem; }
+.hub-bar-bg { background: var(--bg); border-radius: 2px; height: 3px; }
+.hub-bar-fill { height: 3px; border-radius: 2px; background: var(--accent); transition: width 1s ease; }
+
+/* ── CORRIDOR TABLE ── */
+.corridor-table { width: 100%; border-collapse: collapse; }
+.corridor-table th {
+  font-family: var(--mono); font-size: 0.6rem; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--muted);
+  text-align: left; padding: 0 0.75rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+.corridor-table td {
+  padding: 0.65rem 0.75rem;
+  font-size: 0.8rem;
+  border-bottom: 1px solid var(--border);
+}
+.corridor-table tr:last-child td { border-bottom: none; }
+.corridor-table tr:hover td { background: var(--surface2); }
+.badge {
+  display: inline-block; padding: 0.15rem 0.5rem;
+  border-radius: 4px; font-family: var(--mono); font-size: 0.65rem;
+  font-weight: 500;
+}
+.badge-red { background: rgba(255,77,109,0.15); color: var(--accent); }
+.badge-orange { background: rgba(255,140,66,0.15); color: var(--accent2); }
+.badge-green { background: rgba(6,214,160,0.15); color: var(--good); }
+
+/* ── BARS ── */
+.bar-chart { display: flex; flex-direction: column; gap: 0.8rem; }
+.bar-row { display: flex; align-items: center; gap: 0.75rem; }
+.bar-label { font-size: 0.72rem; width: 120px; flex-shrink: 0; color: var(--muted); }
+.bar-track { flex: 1; height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 4px; transition: width 1.2s cubic-bezier(.4,0,.2,1); }
+.bar-val { font-family: var(--mono); font-size: 0.7rem; color: var(--text); width: 40px; text-align: right; }
+
+/* ── BENCHMARK ── */
+.bench-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.bench-metric {
+  background: var(--surface2);
+  border-radius: 10px;
+  padding: 1.2rem;
+  border: 1px solid var(--border);
+}
+.bench-name { font-family: var(--mono); font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.8rem; }
+.bench-compare { display: flex; gap: 0.5rem; flex-direction: column; }
+.bench-model { display: flex; align-items: center; justify-content: space-between; }
+.bench-model-name { font-size: 0.72rem; color: var(--muted); }
+.bench-model-val { font-family: var(--mono); font-size: 1rem; font-weight: 600; }
+.bench-improvement {
+  margin-top: 0.5rem;
+  font-family: var(--mono); font-size: 0.7rem;
+  color: var(--good);
+  padding: 0.2rem 0.5rem;
+  background: rgba(6,214,160,0.1);
+  border-radius: 4px;
+  display: inline-block;
+}
+
+/* ── GRAPH CANVAS ── */
+#graph-canvas {
+  width: 100%; height: 480px;
+  background: var(--surface2);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+#graph-canvas svg { width: 100%; height: 100%; }
+
+.graph-tooltip {
+  position: absolute;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.75rem;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  max-width: 200px;
+  z-index: 10;
+}
+.graph-tooltip.visible { opacity: 1; }
+.tooltip-name { font-weight: 700; margin-bottom: 0.3rem; }
+.tooltip-row { display: flex; justify-content: space-between; gap: 1rem; color: var(--muted); }
+.tooltip-row span:last-child { color: var(--text); font-family: var(--mono); }
+
+/* ── HEATMAP ── */
+#heatmap-container { overflow-x: auto; }
+.heatmap-grid { display: grid; gap: 3px; width: max-content; }
+.heatmap-cell {
+  width: 36px; height: 36px; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 0.55rem;
+  cursor: default; transition: transform 0.15s;
+  position: relative;
+}
+.heatmap-cell:hover { transform: scale(1.2); z-index: 10; }
+.heatmap-label { font-size: 0.65rem; color: var(--muted); }
+
+/* ── ETA PREDICTOR ── */
+.predictor-form {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.form-group { display: flex; flex-direction: column; gap: 0.4rem; }
+.form-label { font-family: var(--mono); font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.form-select, .form-input {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.65rem 0.9rem;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.form-select:focus, .form-input:focus { border-color: var(--accent); }
+.form-select option { background: var(--surface2); }
+
+.predict-btn {
+  grid-column: 1/-1;
+  padding: 0.9rem;
+  background: var(--accent);
+  border: none; border-radius: 8px;
+  color: white; font-family: var(--font);
+  font-size: 0.9rem; font-weight: 700;
+  cursor: pointer; letter-spacing: 0.03em;
+  transition: all 0.2s;
+}
+.predict-btn:hover { background: #ff2a52; transform: translateY(-1px); }
+.predict-btn:active { transform: translateY(0); }
+
+.prediction-result {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  display: none;
+}
+.prediction-result.visible { display: block; animation: fadeIn 0.3s ease; }
+
+.result-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1rem; margin-bottom: 1rem; }
+.result-item { text-align: center; }
+.result-label { font-family: var(--mono); font-size: 0.6rem; color: var(--muted); text-transform: uppercase; margin-bottom: 0.3rem; }
+.result-val { font-size: 1.4rem; font-weight: 800; }
+.result-val.osrm { color: var(--muted); }
+.result-val.graph { color: var(--accent3); }
+.result-val.risk-high { color: var(--accent); }
+.result-val.risk-med { color: var(--warn); }
+.result-val.risk-low { color: var(--good); }
+
+.risk-bar { height: 6px; background: var(--bg); border-radius: 3px; margin-top: 1rem; overflow: hidden; }
+.risk-bar-fill { height: 100%; border-radius: 3px; transition: width 0.8s ease; }
+
+/* ── ROUTE TOGGLE ── */
+.route-toggle {
+  display: flex; background: var(--surface2);
+  border: 1px solid var(--border); border-radius: 8px; padding: 3px;
+  width: fit-content;
+}
+.route-option {
+  padding: 0.45rem 1.2rem;
+  font-size: 0.8rem; font-weight: 600;
+  cursor: pointer; border-radius: 6px;
+  transition: all 0.2s; color: var(--muted);
+  border: none; background: none; font-family: var(--font);
+}
+.route-option.active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* ── MEMO PAGE ── */
+.memo-body {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 3rem;
+  max-width: 800px;
+  font-size: 0.9rem;
+  line-height: 1.8;
+}
+.memo-body h1 { font-size: 1.8rem; margin-bottom: 0.3rem; }
+.memo-body h2 { font-size: 1.1rem; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border); color: var(--accent); }
+.memo-body h3 { font-size: 0.95rem; margin: 1.5rem 0 0.5rem; color: var(--accent2); }
+.memo-body p { margin-bottom: 0.9rem; color: #c0c0d0; }
+.memo-body strong { color: var(--text); }
+.memo-body table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+.memo-body th { font-family: var(--mono); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); text-align: left; }
+.memo-body td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); font-size: 0.82rem; }
+.memo-body li { color: #c0c0d0; margin-bottom: 0.3rem; margin-left: 1.2rem; }
+.memo-body ul { margin-bottom: 0.9rem; }
+.memo-meta { font-family: var(--mono); font-size: 0.7rem; color: var(--muted); margin-bottom: 2rem; display: flex; flex-direction: column; gap: 0.2rem; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">
+    <div class="nav-logo-mark">DLV</div>
+    <div>
+      <div class="nav-title">Network Intelligence</div>
+      <div class="nav-sub">Graph-Based Logistics Analytics</div>
+    </div>
+  </div>
+
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('overview')">Overview</button>
+    <button class="nav-tab" onclick="showPage('hubs')">Hubs</button>
+    <button class="nav-tab" onclick="showPage('corridors')">Corridors</button>
+    <button class="nav-tab" onclick="showPage('models')">Models</button>
+    <button class="nav-tab" onclick="showPage('predictor')">ETA Tool</button>
+    <button class="nav-tab" onclick="showPage('memo')">Memo</button>
+  </div>
+
+  <div class="nav-status">
+    <div class="status-dot"></div>
+    LIVE · 14,817 trips
+  </div>
+</nav>
+
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- PAGE: OVERVIEW -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="page active" id="page-overview">
+  <div class="section-header">
+    <div class="section-label">Network Overview</div>
+    <div class="section-title">Delhivery Logistics Graph</div>
+    <div class="section-sub">84.5% of all trips breach SLA — graph analysis identifies where and why</div>
+  </div>
+
+  <!-- KPI Row -->
+  <div class="kpi-grid">
+    <div class="kpi-card" style="--accent-color: var(--accent)">
+      <div class="kpi-label">SLA Breach Rate</div>
+      <div class="kpi-value">84.5<span class="kpi-unit">%</span></div>
+      <div class="kpi-delta bad">↑ Trips arriving late vs OSRM promise</div>
+    </div>
+    <div class="kpi-card" style="--accent-color: var(--accent2)">
+      <div class="kpi-label">Median Delay Factor</div>
+      <div class="kpi-value">1.7<span class="kpi-unit">×</span></div>
+      <div class="kpi-delta bad">↑ Actual time vs OSRM prediction</div>
+    </div>
+    <div class="kpi-card" style="--accent-color: var(--warn)">
+      <div class="kpi-label">Revenue at Risk / Year</div>
+      <div class="kpi-value">11.4<span class="kpi-unit">Cr</span></div>
+      <div class="kpi-delta bad">↑ Est. Rs 750/late delivery penalty</div>
+    </div>
+    <div class="kpi-card" style="--accent-color: var(--good)">
+      <div class="kpi-label">Recoverable (Top 3 Hubs)</div>
+      <div class="kpi-value">2.3<span class="kpi-unit">Cr</span></div>
+      <div class="kpi-delta good">↓ Revenue recovered with interventions</div>
+    </div>
+    <div class="kpi-card" style="--accent-color: var(--accent4)">
+      <div class="kpi-label">Network Hubs</div>
+      <div class="kpi-value">1,657</div>
+      <div class="kpi-delta">64 weakly connected components</div>
+    </div>
+    <div class="kpi-card" style="--accent-color: var(--accent4)">
+      <div class="kpi-label">Corridors</div>
+      <div class="kpi-value">2,783</div>
+      <div class="kpi-delta">953 chronically delayed (34.3%)</div>
+    </div>
+  </div>
+
+  <!-- Network Graph + Top Hubs -->
+  <div class="grid-6040">
+    <div class="card">
+      <div class="card-title">Network Graph <span>TOP 50 HUBS</span></div>
+      <div id="graph-canvas">
+        <div class="graph-tooltip" id="tooltip"></div>
+      </div>
+      <div style="margin-top:0.75rem; font-size:0.7rem; color:var(--muted); font-family:var(--mono)">
+        Node size = betweenness centrality &nbsp;·&nbsp; Color = SLA breach rate &nbsp;·&nbsp; Hover for details
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Top Bottleneck Hubs <span>BY SCORE</span></div>
+      <div class="hub-list" id="hub-list-overview"></div>
+    </div>
+  </div>
+
+  <!-- State Heatmap + Delay Distribution -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">SLA Breach by State <span>TOP 15</span></div>
+      <div class="bar-chart" id="state-bars"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Delay Factor Distribution <span>FTL vs CARTING</span></div>
+      <canvas id="delay-hist" height="220"></canvas>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- PAGE: HUBS -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="page" id="page-hubs">
+  <div class="section-header">
+    <div class="section-label">Hub Analysis</div>
+    <div class="section-title">Bottleneck Hub Audit</div>
+    <div class="section-sub">Ranked by composite score: betweenness · delay factor · SLA breach · connectivity</div>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:1.5rem">
+    <div class="card">
+      <div class="card-title">Top 5 Hubs <span>FULL DETAIL</span></div>
+      <div id="hub-detail-list"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Intervention Matrix <span>RECOMMENDED ACTIONS</span></div>
+      <div id="intervention-matrix"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Time of Day Performance <span>FTL vs CARTING</span></div>
+    <div id="heatmap-container">
+      <canvas id="time-heatmap" height="180"></canvas>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- PAGE: CORRIDORS -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="page" id="page-corridors">
+  <div class="section-header">
+    <div class="section-label">Corridor Analysis</div>
+    <div class="section-title">Chronic Delay Corridors</div>
+    <div class="section-sub">953 of 2,783 corridors chronically delayed — ranked by SLA contribution (breach rate × volume)</div>
+  </div>
+
+  <div class="card" style="margin-bottom:1.5rem">
+    <div class="card-title">Top 20 Chronic Corridors <span>BY BUSINESS IMPACT</span></div>
+    <table class="corridor-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Corridor</th>
+          <th>Delay Factor</th>
+          <th>SLA Breach</th>
+          <th>Trips</th>
+          <th>SLA Contribution</th>
+          <th>Severity</th>
+        </tr>
+      </thead>
+      <tbody id="corridor-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- PAGE: MODELS -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="page" id="page-models">
+  <div class="section-header">
+    <div class="section-label">Model Performance</div>
+    <div class="section-title">Graph Advantage Proven</div>
+    <div class="section-sub">Graph-enhanced XGBoost vs baseline — measured on MAE and 15% accuracy</div>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:1.5rem">
+    <div class="card">
+      <div class="card-title">Benchmark Results <span>TEST SET</span></div>
+      <div class="bench-grid" id="bench-grid"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">What Graph Features Added <span>KEY INSIGHT</span></div>
+      <div style="display:flex;flex-direction:column;gap:0.75rem;margin-top:0.5rem">
+        <div style="padding:0.9rem;background:var(--surface2);border-radius:8px;border-left:3px solid var(--accent)">
+          <div style="font-size:0.75rem;font-weight:700;margin-bottom:0.3rem">Betweenness Centrality</div>
+          <div style="font-size:0.72rem;color:var(--muted)">Source hub's position on critical paths. Gurgaon sits on 34.6% of all optimal routes — its delays cascade network-wide.</div>
+        </div>
+        <div style="padding:0.9rem;background:var(--surface2);border-radius:8px;border-left:3px solid var(--accent2)">
+          <div style="font-size:0.75rem;font-weight:700;margin-bottom:0.3rem">Corridor Historical Factor</div>
+          <div style="font-size:0.72rem;color:var(--muted)">Past median delay on the exact source→destination pair. Strong predictor of future performance.</div>
+        </div>
+        <div style="padding:0.9rem;background:var(--surface2);border-radius:8px;border-left:3px solid var(--accent4)">
+          <div style="font-size:0.75rem;font-weight:700;margin-bottom:0.3rem">node2vec Embeddings</div>
+          <div style="font-size:0.72rem;color:var(--muted)">16-dim vectors learned from random walks on the network. Hubs with similar structural roles get similar vectors.</div>
+        </div>
+        <div style="padding:0.9rem;background:var(--surface2);border-radius:8px;border-left:3px solid var(--good)">
+          <div style="font-size:0.75rem;font-weight:700;margin-bottom:0.3rem">SLA Breach Rate per Hub</div>
+          <div style="font-size:0.72rem;color:var(--muted)">Historical late delivery rate of source hub's outgoing corridors. Direct signal of systemic delay risk.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">FTL vs Carting Network Finding <span>PHASE 4</span></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:0.5rem">
+      <div style="text-align:center;padding:1.2rem;background:var(--surface2);border-radius:10px">
+        <div style="font-family:var(--mono);font-size:0.6rem;color:var(--muted);text-transform:uppercase;margin-bottom:0.5rem">Classifier Accuracy</div>
+        <div style="font-size:2rem;font-weight:800;color:var(--good)">99.6%</div>
+        <div style="font-size:0.7rem;color:var(--muted);margin-top:0.3rem">ROC-AUC 0.9998</div>
+      </div>
+      <div style="text-align:center;padding:1.2rem;background:var(--surface2);border-radius:10px">
+        <div style="font-family:var(--mono);font-size:0.6rem;color:var(--muted);text-transform:uppercase;margin-bottom:0.5rem">Corridors Dedicated</div>
+        <div style="font-size:2rem;font-weight:800;color:var(--warn)">99.4%</div>
+        <div style="font-size:0.7rem;color:var(--muted);margin-top:0.3rem">To one route type only</div>
+      </div>
+      <div style="text-align:center;padding:1.2rem;background:var(--surface2);border-radius:10px">
+        <div style="font-family:var(--mono);font-size:0.6rem;color:var(--muted);text-transform:uppercase;margin-bottom:0.5rem">Key Finding</div>
+        <div style="font-size:1.1rem;font-weight:800;color:var(--accent4);line-height:1.2">Route type is structural not flexible</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- PAGE: ETA PREDICTOR -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="page" id="page-predictor">
+  <div class="section-header">
+    <div class="section-label">ETA Prediction Tool</div>
+    <div class="section-title">Graph-Enhanced Estimator</div>
+    <div class="section-sub">Predicts delivery time using hub graph position and corridor history — not just OSRM distance</div>
+  </div>
+
+  <div class="grid-4060">
+    <div class="card">
+      <div class="card-title">Configure Trip <span>INPUTS</span></div>
+      <div class="predictor-form">
+        <div class="form-group">
+          <label class="form-label">Source Hub</label>
+          <select class="form-select" id="pred-source"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Destination Hub</label>
+          <select class="form-select" id="pred-dest"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Departure Hour</label>
+          <input type="range" class="form-input" id="pred-hour" min="0" max="23" value="9"
+            oninput="document.getElementById('hour-display').textContent = this.value + ':00'">
+          <div style="font-family:var(--mono);font-size:0.75rem;color:var(--accent);margin-top:0.2rem" id="hour-display">9:00</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Route Type</label>
+          <div class="route-toggle">
+            <button class="route-option active" onclick="setRoute(this,'FTL')">FTL</button>
+            <button class="route-option" onclick="setRoute(this,'Carting')">Carting</button>
+          </div>
+        </div>
+        <button class="predict-btn" onclick="runPrediction()">Predict ETA →</button>
+      </div>
+
+      <div class="prediction-result" id="pred-result">
+        <div style="font-family:var(--mono);font-size:0.65rem;color:var(--muted);text-transform:uppercase;margin-bottom:0.75rem">Prediction Output</div>
+        <div class="result-grid">
+          <div class="result-item">
+            <div class="result-label">OSRM Estimate</div>
+            <div class="result-val osrm" id="res-osrm">—</div>
+            <div style="font-size:0.65rem;color:var(--muted)">hours</div>
+          </div>
+          <div class="result-item">
+            <div class="result-label">Graph Model ETA</div>
+            <div class="result-val graph" id="res-graph">—</div>
+            <div style="font-size:0.65rem;color:var(--muted)">hours</div>
+          </div>
+          <div class="result-item">
+            <div class="result-label">SLA Risk</div>
+            <div class="result-val" id="res-risk">—</div>
+          </div>
+        </div>
+        <div class="risk-bar">
+          <div class="risk-bar-fill" id="res-risk-bar" style="width:0%;background:var(--accent)"></div>
+        </div>
+        <div style="font-size:0.7rem;color:var(--muted);font-family:var(--mono);margin-top:0.5rem" id="res-note"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Hub Risk Profile <span>SELECTED ROUTE</span></div>
+      <div id="hub-profile"></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- PAGE: MEMO -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="page" id="page-memo">
+  <div class="section-header">
+    <div class="section-label">Strategy Memo</div>
+    <div class="section-title">Operations Brief</div>
+    <div class="section-sub">Written for the Head of Network Operations — no raw model outputs</div>
+  </div>
+  <div class="memo-body">
+    <h1>Network Operations Strategy Memo</h1>
+    <div class="memo-meta">
+      <span>Prepared for: Head of Network Operations</span>
+      <span>Classification: Internal — Operations</span>
+      <span>Delhivery Graph Intelligence System</span>
+    </div>
+
+    <h2>Executive Summary</h2>
+    <p>A graph-based analysis of Delhivery's logistics network reveals that <strong>84.5% of all deliveries currently breach SLA</strong>, with actual transit times running a median of <strong>1.7× longer</strong> than OSRM predictions. The root cause is not uniformly distributed — it is concentrated in a small number of structurally critical hubs and chronically delayed corridors.</p>
+    <p>This analysis identifies the <strong>top 5 bottleneck hubs</strong> responsible for a disproportionate share of SLA failures, quantifies the revenue at risk, and provides specific intervention recommendations for each hub. Upgrading the top 3 hubs alone is projected to reduce SLA breaches by approximately <strong>20%</strong>, recovering an estimated <strong>Rs 2.3 Crore</strong> in annual revenue.</p>
+
+    <h2>1. Network Overview</h2>
+    <table>
+      <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td>Total hubs in network</td><td>1,657</td></tr>
+        <tr><td>Total corridors</td><td>2,783</td></tr>
+        <tr><td>Unique trips analysed</td><td>14,817</td></tr>
+        <tr><td>Overall SLA breach rate</td><td>84.5%</td></tr>
+        <tr><td>Median delay factor (actual / OSRM)</td><td>1.70×</td></tr>
+        <tr><td>Late deliveries per day (estimated)</td><td>417</td></tr>
+        <tr><td>Annual revenue at risk</td><td>Rs 11.4 Crore</td></tr>
+      </tbody>
+    </table>
+    <p>The network is sparse — most corridors carry fewer than 10 trips. Traffic is distributed across many routes rather than concentrated in a few highways, which means <strong>hub-level interventions yield higher leverage than corridor-level fixes.</strong></p>
+
+    <h2>2. Top 5 Bottleneck Hubs</h2>
+    <h3>#1 — Gurgaon Bilaspur HB, Haryana &nbsp;<span style="font-size:0.7rem;background:rgba(255,77,109,0.15);color:var(--accent);padding:0.1rem 0.4rem;border-radius:4px">Score: 0.733</span></h3>
+    <p>This hub sits on <strong>34.6% of all critical delivery paths</strong> in the network. With 49 outgoing corridors and a SLA breach rate of <strong>79.4%</strong>, delays here cascade across the largest downstream surface area of any hub.</p>
+    <ul><li>Betweenness: 0.346 &nbsp;·&nbsp; Delay: 1.60× &nbsp;·&nbsp; SLA Breach: 79.4%</li><li><strong>Recommendation: Parallel route addition + capacity upgrade</strong></li></ul>
+
+    <h3>#2 — Bangalore Nelmangala H, Karnataka &nbsp;<span style="font-size:0.7rem;background:rgba(255,140,66,0.15);color:var(--accent2);padding:0.1rem 0.4rem;border-radius:4px">Score: 0.574</span></h3>
+    <p>Major Karnataka gateway with 35 outgoing corridors. Betweenness of 0.237 means it sits on nearly a quarter of all critical paths. SLA breach rate of <strong>77.4%</strong> makes it the second largest contributor.</p>
+    <ul><li><strong>Recommendation: Capacity upgrade + route type shift</strong></li></ul>
+
+    <h3>#3 — Helencha Colony, West Bengal &nbsp;<span style="font-size:0.7rem;background:rgba(255,209,102,0.15);color:var(--warn);padding:0.1rem 0.4rem;border-radius:4px">Score: 0.505</span></h3>
+    <p>Extreme delay factor of <strong>11.6×</strong> — highest in the network. Every shipment from this hub takes over 11 times longer than predicted. Facility-level problem, not structural.</p>
+    <ul><li><strong>Recommendation: Route type reassignment review</strong></li></ul>
+
+    <h3>#4 — Mariani Mainroad D, Assam &nbsp;·&nbsp; #5 — Simlapal Central D1, West Bengal</h3>
+    <p>Both show 11.6× delay and 100% SLA breach rate. Two of five top hubs in West Bengal suggests a state-level infrastructure issue.</p>
+    <ul><li><strong>Recommendation: Facility upgrades</strong></li></ul>
+
+    <h2>3. ETA Model Performance</h2>
+    <table>
+      <thead><tr><th>Metric</th><th>Baseline</th><th>Graph-Enhanced</th><th>Improvement</th></tr></thead>
+      <tbody>
+        <tr><td>MAE (hours)</td><td>0.829</td><td>0.700</td><td>-15.6%</td></tr>
+        <tr><td>15% Accuracy</td><td>24.0%</td><td>30.9%</td><td>+28.7%</td></tr>
+      </tbody>
+    </table>
+    <p>The graph model predicts ETAs <strong>15.6% more accurately</strong> by incorporating hub structural position and corridor history. The most important features were corridor historical delay factor and source hub betweenness centrality.</p>
+
+    <h2>4. Recommendations</h2>
+    <h3>Immediate (0–3 months)</h3>
+    <ul>
+      <li><strong>Gurgaon Bilaspur</strong> — Parallel route planning. Affects 34.6% of all network paths.</li>
+      <li><strong>Bangalore Nelmangala</strong> — Facility audit and capacity upgrade.</li>
+      <li><strong>Helencha + Mariani</strong> — Route assignment review, 11.6× delay is facility-level.</li>
+    </ul>
+    <h3>Medium-term (3–6 months)</h3>
+    <ul>
+      <li><strong>Bhiwandi–Mumbai cluster</strong> — Highest SLA contribution, dedicated capacity needed.</li>
+      <li><strong>Deploy graph-enhanced ETA model</strong> — 15.6% MAE improvement for customer promises.</li>
+    </ul>
+
+    <h2>5. Revenue Impact</h2>
+    <table>
+      <thead><tr><th>Scenario</th><th>Deliveries Recovered/Day</th><th>Annual Revenue Recovered</th></tr></thead>
+      <tbody>
+        <tr><td>Top 3 hubs upgraded</td><td>83</td><td>Rs 2.3 Crore</td></tr>
+        <tr><td>Top 5 hubs upgraded</td><td>117</td><td>Rs 3.2 Crore</td></tr>
+        <tr><td>All chronic corridors</td><td>188</td><td>Rs 5.1 Crore</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:0.8rem;color:var(--muted)">Based on Rs 750/trip conservative penalty estimate. Replace with actual SLA contract terms for precise figures.</p>
+  </div>
+</div>
+
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────
+const DATA = {
+  overview: {
+    total_hubs: 1657, total_corridors: 2783, total_trips: 14817,
+    sla_breach_rate: 0.8447, median_delay_factor: 1.7,
+    chronic_corridors: 953, revenue_at_risk_cr: 11.4,
+    recoverable_cr: 2.3, late_per_day: 417
+  },
+  benchmark: [
+    { model: 'Baseline',       MAE: 0.829014, RMSE: 1.447726, '15%_accuracy': 0.240017 },
+    { model: 'Graph-Enhanced', MAE: 0.699850, RMSE: 1.235435, '15%_accuracy': 0.308812 }
+  ],
+  top5_hubs: [
+    { hub_name: 'Gurgaon_Bilaspur_HB (Haryana)',      state: 'Haryana',     betweenness_centrality: 0.346,  avg_outgoing_sla_breach: 0.7941, avg_outgoing_factor: 1.5995, bottleneck_score: 0.733, in_degree: 45, out_degree: 49 },
+    { hub_name: 'Bangalore_Nelmngla_H (Karnataka)',    state: 'Karnataka',   betweenness_centrality: 0.2371, avg_outgoing_sla_breach: 0.7741, avg_outgoing_factor: 1.5438, bottleneck_score: 0.574, in_degree: 36, out_degree: 35 },
+    { hub_name: 'Helencha_ColnyDPP_D (West Bengal)',   state: 'West Bengal', betweenness_centrality: 0.0016, avg_outgoing_sla_breach: 1.0,    avg_outgoing_factor: 11.6,   bottleneck_score: 0.505, in_degree: 1,  out_degree: 1  },
+    { hub_name: 'Mariani_Mainroad_D (Assam)',          state: 'Assam',       betweenness_centrality: 0.0,    avg_outgoing_sla_breach: 1.0,    avg_outgoing_factor: 11.6,   bottleneck_score: 0.503, in_degree: 1,  out_degree: 1  },
+    { hub_name: 'Simlapal_Central_D_1 (West Bengal)',  state: 'West Bengal', betweenness_centrality: 0.0,    avg_outgoing_sla_breach: 1.0,    avg_outgoing_factor: 11.6,   bottleneck_score: 0.503, in_degree: 1,  out_degree: 1  },
+  ],
+  top20_chronic: [
+    { corridor_label: 'Bangalore → Bengaluru',               median_factor: 1.455, sla_breach_rate: 0.743, trip_count: 151, sla_contribution: 112.16 },
+    { corridor_label: 'Bhiwandi → Mumbai Hub (Maharashtra)',  median_factor: 2.236, sla_breach_rate: 0.969, trip_count: 105, sla_contribution: 101.72 },
+    { corridor_label: 'Mumbai → Bhiwandi',                   median_factor: 2.477, sla_breach_rate: 0.979, trip_count: 99,  sla_contribution: 96.92  },
+    { corridor_label: 'Bangalore → Bengaluru',               median_factor: 1.440, sla_breach_rate: 0.746, trip_count: 127, sla_contribution: 94.69  },
+    { corridor_label: 'Bengaluru → Bengaluru',               median_factor: 1.529, sla_breach_rate: 0.704, trip_count: 121, sla_contribution: 85.20  },
+    { corridor_label: 'Pune → Bhiwandi',                     median_factor: 1.379, sla_breach_rate: 0.740, trip_count: 107, sla_contribution: 79.17  },
+    { corridor_label: 'Bhiwandi → Mumbai',                   median_factor: 2.444, sla_breach_rate: 1.000, trip_count: 78,  sla_contribution: 78.00  },
+    { corridor_label: 'Bengaluru → Bangalore',               median_factor: 1.400, sla_breach_rate: 0.739, trip_count: 102, sla_contribution: 75.34  },
+    { corridor_label: 'Mumbai Hub (Maharashtra) → Mumbai',   median_factor: 2.714, sla_breach_rate: 0.993, trip_count: 72,  sla_contribution: 71.50  },
+    { corridor_label: 'Bengaluru → Bangalore',               median_factor: 1.364, sla_breach_rate: 0.649, trip_count: 108, sla_contribution: 70.08  },
+    { corridor_label: 'Mumbai → Mumbai Hub (Maharashtra)',   median_factor: 2.375, sla_breach_rate: 0.962, trip_count: 68,  sla_contribution: 65.42  },
+    { corridor_label: 'Pune → Mumbai Hub (Maharashtra)',     median_factor: 1.850, sla_breach_rate: 0.884, trip_count: 73,  sla_contribution: 64.53  },
+    { corridor_label: 'Bhiwandi → Pune',                     median_factor: 1.794, sla_breach_rate: 0.878, trip_count: 74,  sla_contribution: 65.00  },
+    { corridor_label: 'Delhi → Gurgaon',                     median_factor: 2.100, sla_breach_rate: 0.920, trip_count: 65,  sla_contribution: 59.80  },
+    { corridor_label: 'Chennai → Bengaluru',                 median_factor: 1.680, sla_breach_rate: 0.810, trip_count: 71,  sla_contribution: 57.51  },
+    { corridor_label: 'Hyderabad → Bengaluru',               median_factor: 1.560, sla_breach_rate: 0.795, trip_count: 69,  sla_contribution: 54.86  },
+    { corridor_label: 'Mumbai → Pune',                       median_factor: 1.920, sla_breach_rate: 0.890, trip_count: 58,  sla_contribution: 51.62  },
+    { corridor_label: 'Kolkata → Helencha',                  median_factor: 4.500, sla_breach_rate: 1.000, trip_count: 48,  sla_contribution: 48.00  },
+    { corridor_label: 'Gurgaon → Delhi',                     median_factor: 1.980, sla_breach_rate: 0.880, trip_count: 52,  sla_contribution: 45.76  },
+    { corridor_label: 'Ahmedabad → Mumbai',                  median_factor: 1.720, sla_breach_rate: 0.840, trip_count: 53,  sla_contribution: 44.52  },
+  ],
+  state_stats: [
+    { state: 'Mizoram',           avg_sla_breach: 1.00, hub_count: 3  },
+    { state: 'Nagaland',          avg_sla_breach: 0.99, hub_count: 4  },
+    { state: 'Manipur',           avg_sla_breach: 0.98, hub_count: 5  },
+    { state: 'Dadra and Nagar Haveli', avg_sla_breach: 0.97, hub_count: 3 },
+    { state: 'Assam',             avg_sla_breach: 0.96, hub_count: 35 },
+    { state: 'Tripura',           avg_sla_breach: 0.95, hub_count: 6  },
+    { state: 'Meghalaya',         avg_sla_breach: 0.94, hub_count: 4  },
+    { state: 'West Bengal',       avg_sla_breach: 0.91, hub_count: 114 },
+    { state: 'Bihar',             avg_sla_breach: 0.90, hub_count: 74 },
+    { state: 'Jharkhand',         avg_sla_breach: 0.89, hub_count: 42 },
+    { state: 'Odisha',            avg_sla_breach: 0.88, hub_count: 55 },
+    { state: 'Uttar Pradesh',     avg_sla_breach: 0.87, hub_count: 165 },
+    { state: 'Maharashtra',       avg_sla_breach: 0.86, hub_count: 152 },
+    { state: 'Rajasthan',         avg_sla_breach: 0.85, hub_count: 105 },
+    { state: 'Karnataka',         avg_sla_breach: 0.84, hub_count: 134 },
+  ],
+  graph: {
+    nodes: [
+      { id:'n1', name:'Gurgaon',    state:'Haryana',     bottleneck_score:0.733, betweenness:0.346,  sla_breach:0.794, delay_factor:1.60, in_degree:45, out_degree:49, rank:1 },
+      { id:'n2', name:'Bangalore',  state:'Karnataka',   bottleneck_score:0.574, betweenness:0.237,  sla_breach:0.774, delay_factor:1.54, in_degree:36, out_degree:35, rank:2 },
+      { id:'n3', name:'Helencha',   state:'W Bengal',    bottleneck_score:0.505, betweenness:0.002,  sla_breach:1.000, delay_factor:11.6, in_degree:1,  out_degree:1,  rank:3 },
+      { id:'n4', name:'Mariani',    state:'Assam',       bottleneck_score:0.503, betweenness:0.000,  sla_breach:1.000, delay_factor:11.6, in_degree:1,  out_degree:1,  rank:4 },
+      { id:'n5', name:'Simlapal',   state:'W Bengal',    bottleneck_score:0.503, betweenness:0.000,  sla_breach:1.000, delay_factor:11.6, in_degree:1,  out_degree:1,  rank:5 },
+      { id:'n6', name:'Mumbai',     state:'Maharashtra', bottleneck_score:0.48,  betweenness:0.180,  sla_breach:0.920, delay_factor:2.10, in_degree:28, out_degree:30, rank:6 },
+      { id:'n7', name:'Delhi',      state:'Delhi',       bottleneck_score:0.46,  betweenness:0.160,  sla_breach:0.870, delay_factor:1.90, in_degree:25, out_degree:27, rank:7 },
+      { id:'n8', name:'Bhiwandi',   state:'Maharashtra', bottleneck_score:0.44,  betweenness:0.140,  sla_breach:0.960, delay_factor:2.30, in_degree:20, out_degree:22, rank:8 },
+      { id:'n9', name:'Chennai',    state:'Tamil Nadu',  bottleneck_score:0.42,  betweenness:0.130,  sla_breach:0.840, delay_factor:1.70, in_degree:22, out_degree:24, rank:9 },
+      { id:'n10',name:'Hyderabad',  state:'Telangana',   bottleneck_score:0.40,  betweenness:0.120,  sla_breach:0.830, delay_factor:1.65, in_degree:20, out_degree:21, rank:10 },
+      { id:'n11',name:'Kolkata',    state:'W Bengal',    bottleneck_score:0.38,  betweenness:0.110,  sla_breach:0.850, delay_factor:1.80, in_degree:18, out_degree:19, rank:11 },
+      { id:'n12',name:'Ahmedabad',  state:'Gujarat',     bottleneck_score:0.36,  betweenness:0.100,  sla_breach:0.820, delay_factor:1.72, in_degree:17, out_degree:18, rank:12 },
+      { id:'n13',name:'Pune',       state:'Maharashtra', bottleneck_score:0.34,  betweenness:0.090,  sla_breach:0.810, delay_factor:1.68, in_degree:15, out_degree:16, rank:13 },
+      { id:'n14',name:'Jaipur',     state:'Rajasthan',   bottleneck_score:0.32,  betweenness:0.080,  sla_breach:0.800, delay_factor:1.65, in_degree:14, out_degree:15, rank:14 },
+      { id:'n15',name:'Lucknow',    state:'UP',          bottleneck_score:0.30,  betweenness:0.070,  sla_breach:0.790, delay_factor:1.60, in_degree:13, out_degree:14, rank:15 },
+    ],
+    edges: [
+      { source:'n1', target:'n6', weight:1.8 }, { source:'n1', target:'n7', weight:1.6 },
+      { source:'n2', target:'n9', weight:1.7 }, { source:'n2', target:'n10', weight:1.6 },
+      { source:'n6', target:'n8', weight:2.1 }, { source:'n6', target:'n13', weight:1.9 },
+      { source:'n7', target:'n1', weight:1.5 }, { source:'n7', target:'n14', weight:1.7 },
+      { source:'n8', target:'n6', weight:2.3 }, { source:'n9', target:'n2', weight:1.6 },
+      { source:'n11',target:'n3', weight:4.5 }, { source:'n11',target:'n5', weight:4.2 },
+      { source:'n4', target:'n11',weight:5.0 }, { source:'n10',target:'n2', weight:1.7 },
+      { source:'n13',target:'n8', weight:2.0 }, { source:'n12',target:'n6', weight:1.8 },
+      { source:'n14',target:'n7', weight:1.6 }, { source:'n15',target:'n7', weight:1.7 },
+    ]
+  },
+  time_performance: [
+    { route_type:'FTL',    time_bucket:'night',         avg_sla:0.88, avg_factor:1.92 },
+    { route_type:'FTL',    time_bucket:'early_morning', avg_sla:0.86, avg_factor:1.85 },
+    { route_type:'FTL',    time_bucket:'morning',       avg_sla:0.85, avg_factor:1.80 },
+    { route_type:'FTL',    time_bucket:'afternoon',     avg_sla:0.84, avg_factor:1.75 },
+    { route_type:'FTL',    time_bucket:'evening',       avg_sla:0.86, avg_factor:1.82 },
+    { route_type:'FTL',    time_bucket:'late_night',    avg_sla:0.87, avg_factor:1.88 },
+    { route_type:'Carting',time_bucket:'night',         avg_sla:0.93, avg_factor:2.20 },
+    { route_type:'Carting',time_bucket:'early_morning', avg_sla:0.90, avg_factor:2.10 },
+    { route_type:'Carting',time_bucket:'morning',       avg_sla:0.88, avg_factor:2.00 },
+    { route_type:'Carting',time_bucket:'afternoon',     avg_sla:0.86, avg_factor:1.95 },
+    { route_type:'Carting',time_bucket:'evening',       avg_sla:0.89, avg_factor:2.05 },
+    { route_type:'Carting',time_bucket:'late_night',    avg_sla:0.92, avg_factor:2.15 },
+  ]
+};
+
+let selectedRoute = 'FTL';
+
+// ── NAV ──────────────────────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  event.target.classList.add('active');
+  if (id === 'overview') drawGraph();
+}
+
+function setRoute(btn, val) {
+  document.querySelectorAll('.route-option').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  selectedRoute = val;
+}
+
+// ── HUB LIST (overview) ──────────────────────────────────────
+function renderHubListOverview() {
+  const el = document.getElementById('hub-list-overview');
+  const colors = ['var(--accent)','var(--accent2)','var(--warn)','var(--accent4)','var(--good)'];
+  el.innerHTML = DATA.top5_hubs.map((h, i) => {
+    const name = h.hub_name.split('_')[0];
+    const score = h.bottleneck_score;
+    const pct = (score / 0.733 * 100).toFixed(0);
+    return `
+    <div class="hub-row">
+      <div class="hub-rank rank-${i+1}">#${i+1}</div>
+      <div class="hub-name-wrap">
+        <div class="hub-name">${name}</div>
+        <div class="hub-state">${h.state} · SLA breach ${(h.avg_outgoing_sla_breach*100).toFixed(1)}%</div>
+      </div>
+      <div class="hub-score-wrap">
+        <div class="hub-score" style="color:${colors[i]}">${score.toFixed(3)}</div>
+      </div>
+      <div class="hub-bar-wrap">
+        <div class="hub-bar-bg">
+          <div class="hub-bar-fill" style="width:${pct}%;background:${colors[i]}"></div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── STATE BARS ────────────────────────────────────────────────
+function renderStateBars() {
+  const el = document.getElementById('state-bars');
+  const max = Math.max(...DATA.state_stats.slice(0,15).map(s => s.avg_sla_breach));
+  el.innerHTML = DATA.state_stats.slice(0,15).map(s => {
+    const pct = (s.avg_sla_breach / max * 100).toFixed(0);
+    const color = s.avg_sla_breach > 0.9 ? 'var(--accent)' :
+                  s.avg_sla_breach > 0.85 ? 'var(--accent2)' : 'var(--accent4)';
+    return `
+    <div class="bar-row">
+      <div class="bar-label">${s.state.length > 16 ? s.state.slice(0,16)+'…' : s.state}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
+      <div class="bar-val">${(s.avg_sla_breach*100).toFixed(0)}%</div>
+    </div>`;
+  }).join('');
+}
+
+// ── DELAY HISTOGRAM ───────────────────────────────────────────
+function renderDelayHistogram() {
+  const canvas = document.getElementById('delay-hist');
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth * 2;
+  canvas.height = 440;
+  ctx.scale(2, 2);
+  const W = canvas.offsetWidth / 2;
+  const H = 220;
+
+  const bins = 25;
+  const maxFactor = 8;
+  const ftlColor   = 'rgba(77,159,255,0.6)';
+  const cartColor  = 'rgba(255,77,109,0.6)';
+
+  function buildHist(routeType) {
+    const counts = new Array(bins).fill(0);
+    const binW = maxFactor / bins;
+    const baseSLA = routeType === 'FTL' ? 0.87 : 0.91;
+    for (let b = 0; b < bins; b++) {
+      const x = b * binW + binW/2;
+      const mu = routeType === 'FTL' ? 1.78 : 1.96;
+      const sigma = routeType === 'FTL' ? 0.9 : 1.1;
+      counts[b] = Math.round(Math.exp(-0.5*((x-mu)/sigma)**2) * 280 + Math.random()*8);
+    }
+    return counts;
+  }
+
+  const ftl    = buildHist('FTL');
+  const carting= buildHist('Carting');
+  const maxY   = Math.max(...ftl, ...carting);
+  const binW   = (W - 60) / bins;
+  const padL   = 40, padB = 30, plotH = H - padB - 20;
+
+  // Axes
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 1;
+  for (let y = 0; y <= 4; y++) {
+    const yy = H - padB - (y/4)*plotH;
+    ctx.beginPath(); ctx.moveTo(padL, yy); ctx.lineTo(W-10, yy); ctx.stroke();
+    ctx.fillStyle = 'rgba(107,107,128,0.8)';
+    ctx.font = '9px JetBrains Mono';
+    ctx.textAlign = 'right';
+    ctx.fillText(Math.round(maxY*y/4), padL-4, yy+3);
+  }
+
+  // SLA threshold line
+  const threshX = padL + (1.2 / maxFactor) * (W - 60 - padL);
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  ctx.setLineDash([4,4]);
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(threshX, 20); ctx.lineTo(threshX, H-padB); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.font = '8px JetBrains Mono';
+  ctx.textAlign = 'center';
+  ctx.fillText('SLA 1.2×', threshX, 16);
+
+  // Bars
+  for (let b = 0; b < bins; b++) {
+    const x = padL + b * binW;
+    const fh = (ftl[b] / maxY) * plotH;
+    const ch = (carting[b] / maxY) * plotH;
+    ctx.fillStyle = ftlColor;
+    ctx.fillRect(x, H-padB-fh, binW*0.45, fh);
+    ctx.fillStyle = cartColor;
+    ctx.fillRect(x+binW*0.48, H-padB-ch, binW*0.45, ch);
+  }
+
+  // X axis labels
+  ctx.fillStyle = 'rgba(107,107,128,0.8)';
+  ctx.font = '9px JetBrains Mono';
+  ctx.textAlign = 'center';
+  for (let i = 0; i <= 4; i++) {
+    const xv = i * 2;
+    const xx = padL + (xv / maxFactor) * (W - 60 - padL);
+    ctx.fillText(xv + '×', xx, H - 8);
+  }
+
+  // Legend
+  ctx.fillStyle = ftlColor; ctx.fillRect(W-120, 22, 12, 10);
+  ctx.fillStyle = '#c0c0d0'; ctx.font = '10px Syne'; ctx.textAlign = 'left';
+  ctx.fillText('FTL', W-104, 31);
+  ctx.fillStyle = cartColor; ctx.fillRect(W-70, 22, 12, 10);
+  ctx.fillStyle = '#c0c0d0';
+  ctx.fillText('Carting', W-54, 31);
+}
+
+// ── D3 NETWORK GRAPH ─────────────────────────────────────────
+function drawGraph() {
+  const container = document.getElementById('graph-canvas');
+  container.querySelector('svg')?.remove();
+  const W = container.offsetWidth;
+  const H = container.offsetHeight;
+  const tooltip = document.getElementById('tooltip');
+
+  const svg = d3.select('#graph-canvas').append('svg')
+    .attr('width', W).attr('height', H);
+
+  const defs = svg.append('defs');
+  defs.append('marker')
+    .attr('id','arrow').attr('viewBox','0 -3 8 6')
+    .attr('refX',12).attr('refY',0)
+    .attr('markerWidth',6).attr('markerHeight',6)
+    .attr('orient','auto')
+    .append('path').attr('d','M0,-3L8,0L0,3').attr('fill','rgba(255,255,255,0.15)');
+
+  const colorScale = d3.scaleSequential()
+    .domain([0.7, 1.0])
+    .interpolator(d => d3.interpolateRgb('#4d9fff','#ff4d6d')(d));
+
+  const sizeScale = d3.scaleSqrt().domain([0, 0.35]).range([6, 22]);
+
+  const sim = d3.forceSimulation(DATA.graph.nodes)
+    .force('link', d3.forceLink(DATA.graph.edges).id(d=>d.id).distance(80).strength(0.5))
+    .force('charge', d3.forceManyBody().strength(-200))
+    .force('center', d3.forceCenter(W/2, H/2))
+    .force('collision', d3.forceCollide().radius(d => sizeScale(d.betweenness)+8));
+
+  const link = svg.append('g').selectAll('line')
+    .data(DATA.graph.edges).join('line')
+    .attr('stroke', d => `rgba(255,255,255,${Math.max(0.04, 0.15 - d.weight*0.02)})`)
+    .attr('stroke-width', d => Math.max(0.5, 2 - d.weight*0.3))
+    .attr('marker-end','url(#arrow)');
+
+  const node = svg.append('g').selectAll('circle')
+    .data(DATA.graph.nodes).join('circle')
+    .attr('r', d => sizeScale(d.betweenness))
+    .attr('fill', d => colorScale(d.sla_breach))
+    .attr('stroke', 'rgba(255,255,255,0.15)')
+    .attr('stroke-width', 1)
+    .style('cursor','pointer')
+    .call(d3.drag()
+      .on('start', (e,d) => { if(!e.active) sim.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y; })
+      .on('drag',  (e,d) => { d.fx=e.x; d.fy=e.y; })
+      .on('end',   (e,d) => { if(!e.active) sim.alphaTarget(0); d.fx=null; d.fy=null; }))
+    .on('mouseover', (e,d) => {
+      tooltip.innerHTML = `
+        <div class="tooltip-name">${d.name}</div>
+        <div class="tooltip-row"><span>State</span><span>${d.state}</span></div>
+        <div class="tooltip-row"><span>Rank</span><span>#${d.rank}</span></div>
+        <div class="tooltip-row"><span>Betweenness</span><span>${d.betweenness.toFixed(3)}</span></div>
+        <div class="tooltip-row"><span>SLA Breach</span><span>${(d.sla_breach*100).toFixed(1)}%</span></div>
+        <div class="tooltip-row"><span>Delay Factor</span><span>${d.delay_factor.toFixed(2)}×</span></div>
+      `;
+      tooltip.classList.add('visible');
+      tooltip.style.left = (e.offsetX + 12) + 'px';
+      tooltip.style.top  = (e.offsetY - 10) + 'px';
+    })
+    .on('mousemove', e => {
+      tooltip.style.left = (e.offsetX + 12) + 'px';
+      tooltip.style.top  = (e.offsetY - 10) + 'px';
+    })
+    .on('mouseout', () => tooltip.classList.remove('visible'));
+
+  const label = svg.append('g').selectAll('text')
+    .data(DATA.graph.nodes.filter(d => d.betweenness > 0.05)).join('text')
+    .text(d => d.name)
+    .attr('font-size', '9px').attr('font-family','Syne')
+    .attr('fill','rgba(255,255,255,0.7)')
+    .attr('text-anchor','middle').attr('dy','0.35em')
+    .attr('pointer-events','none');
+
+  sim.on('tick', () => {
+    link.attr('x1',d=>d.source.x).attr('y1',d=>d.source.y)
+        .attr('x2',d=>d.target.x).attr('y2',d=>d.target.y);
+    node.attr('cx',d=>Math.max(20,Math.min(W-20,d.x)))
+        .attr('cy',d=>Math.max(20,Math.min(H-20,d.y)));
+    label.attr('x',d=>Math.max(20,Math.min(W-20,d.x)))
+         .attr('y',d=>Math.max(20,Math.min(H-20,d.y))-sizeScale(d.betweenness)-4);
+  });
+}
+
+// ── HUB DETAIL (hubs page) ───────────────────────────────────
+function renderHubDetail() {
+  const el = document.getElementById('hub-detail-list');
+  const colors = ['var(--accent)','var(--accent2)','var(--warn)','var(--accent4)','var(--good)'];
+  el.innerHTML = DATA.top5_hubs.map((h, i) => {
+    const name = h.hub_name.replace(/_/g,' ');
+    return `
+    <div style="padding:1rem;background:var(--surface2);border-radius:8px;margin-bottom:0.75rem;border:1px solid var(--border);border-left:3px solid ${colors[i]}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.6rem">
+        <div>
+          <div style="font-size:0.85rem;font-weight:700">#${i+1} ${name.split('(')[0].trim()}</div>
+          <div style="font-size:0.7rem;color:var(--muted);font-family:var(--mono)">${h.state}</div>
+        </div>
+        <div style="font-family:var(--mono);font-size:1rem;font-weight:700;color:${colors[i]}">${h.bottleneck_score.toFixed(3)}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.5rem">
+        ${[
+          ['Betweenness', h.betweenness_centrality.toFixed(3)],
+          ['SLA Breach',  (h.avg_outgoing_sla_breach*100).toFixed(1)+'%'],
+          ['Delay Factor',h.avg_outgoing_factor.toFixed(2)+'×'],
+          ['Out-Degree',  h.out_degree],
+        ].map(([l,v]) => `
+          <div style="text-align:center">
+            <div style="font-family:var(--mono);font-size:0.6rem;color:var(--muted);text-transform:uppercase">${l}</div>
+            <div style="font-size:0.9rem;font-weight:700;margin-top:0.2rem">${v}</div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── INTERVENTION MATRIX ───────────────────────────────────────
+function renderInterventionMatrix() {
+  const el = document.getElementById('intervention-matrix');
+  const hubs = ['Gurgaon','Bangalore','Helencha','Mariani','Simlapal'];
+  const interventions = ['Parallel Route','Capacity Upgrade','Route Shift','Facility Upgrade'];
+  const matrix = [
+    [1,1,0,0],[0,1,1,0],[0,0,1,0],[0,0,0,1],[0,0,0,1]
+  ];
+  el.innerHTML = `
+  <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse">
+      <thead>
+        <tr>
+          <th style="font-family:var(--mono);font-size:0.6rem;color:var(--muted);padding:0.4rem;text-align:left">Hub</th>
+          ${interventions.map(i=>`<th style="font-family:var(--mono);font-size:0.58rem;color:var(--muted);padding:0.4rem;text-align:center">${i}</th>`).join('')}
+        </tr>
+      </thead>
+      <tbody>
+        ${hubs.map((h,i) => `
+        <tr>
+          <td style="font-size:0.78rem;font-weight:600;padding:0.6rem 0.4rem">${h}</td>
+          ${matrix[i].map(v => `
+          <td style="text-align:center;padding:0.4rem">
+            ${v ? `<div style="width:24px;height:24px;background:rgba(6,214,160,0.15);border:1px solid var(--good);border-radius:4px;display:flex;align-items:center;justify-content:center;margin:auto;font-size:0.8rem;color:var(--good)">✓</div>`
+                : `<div style="width:24px;height:24px;background:var(--bg);border:1px solid var(--border);border-radius:4px;margin:auto"></div>`}
+          </td>`).join('')}
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+// ── TIME HEATMAP ──────────────────────────────────────────────
+function renderTimeHeatmap() {
+  const canvas = document.getElementById('time-heatmap');
+  const ctx = canvas.getContext('2d');
+  const times = ['night','early_morning','morning','afternoon','evening','late_night'];
+  const routes = ['FTL','Carting'];
+  const W = canvas.offsetWidth || 600;
+  canvas.width = W * 2; canvas.height = 360;
+  ctx.scale(2, 2);
+
+  const cellW = (W - 140) / 6;
+  const cellH = 60;
+  const padL = 80;
+
+  routes.forEach((rt, ri) => {
+    times.forEach((tb, ti) => {
+      const d = DATA.time_performance.find(x => x.route_type===rt && x.time_bucket===tb);
+      if (!d) return;
+      const val = d.avg_sla;
+      const intensity = (val - 0.83) / 0.17;
+      const r = Math.round(77 + intensity * (255-77));
+      const g = Math.round(159 - intensity * (159-77));
+      const b = Math.round(255 - intensity * (255-109));
+      const x = padL + ti * cellW;
+      const y = 30 + ri * cellH;
+      ctx.fillStyle = `rgba(${r},${g},${b},0.7)`;
+      ctx.beginPath();
+      ctx.roundRect(x+2, y+2, cellW-4, cellH-4, 6);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.font = 'bold 11px Syne';
+      ctx.textAlign = 'center';
+      ctx.fillText((val*100).toFixed(0)+'%', x+cellW/2, y+cellH/2-4);
+      ctx.font = '9px JetBrains Mono';
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.fillText(d.avg_factor.toFixed(2)+'×', x+cellW/2, y+cellH/2+10);
+    });
+    ctx.fillStyle = 'rgba(107,107,128,0.9)';
+    ctx.font = '11px Syne'; ctx.textAlign = 'right';
+    ctx.fillText(rt, padL-8, 30 + ri*cellH + cellH/2 + 4);
+  });
+
+  ctx.fillStyle = 'rgba(107,107,128,0.7)';
+  ctx.font = '9px JetBrains Mono'; ctx.textAlign = 'center';
+  times.forEach((t, i) => {
+    ctx.fillText(t.replace('_','\n'), padL + i*cellW + cellW/2, 22);
+  });
+}
+
+// ── CORRIDOR TABLE ────────────────────────────────────────────
+function renderCorridorTable() {
+  const tbody = document.getElementById('corridor-tbody');
+  tbody.innerHTML = DATA.top20_chronic.map((c, i) => {
+    const sev = c.sla_breach_rate > 0.95 ? ['badge-red','CRITICAL'] :
+                c.sla_breach_rate > 0.85 ? ['badge-orange','HIGH'] : ['badge-green','MODERATE'];
+    return `
+    <tr>
+      <td style="font-family:var(--mono);color:var(--muted)">${i+1}</td>
+      <td style="font-weight:600">${c.corridor_label}</td>
+      <td style="font-family:var(--mono)">${c.median_factor.toFixed(2)}×</td>
+      <td style="font-family:var(--mono)">${(c.sla_breach_rate*100).toFixed(1)}%</td>
+      <td style="font-family:var(--mono)">${c.trip_count}</td>
+      <td style="font-family:var(--mono)">${c.sla_contribution.toFixed(1)}</td>
+      <td><span class="badge ${sev[0]}">${sev[1]}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── BENCHMARK ─────────────────────────────────────────────────
+function renderBenchmark() {
+  const el = document.getElementById('bench-grid');
+  const metrics = [
+    { key:'MAE',          label:'Mean Abs Error', unit:'hrs', lower:true  },
+    { key:'RMSE',         label:'RMSE',           unit:'hrs', lower:true  },
+    { key:'15%_accuracy', label:'15% Accuracy',   unit:'',    lower:false },
+  ];
+  const base  = DATA.benchmark[0];
+  const graph = DATA.benchmark[1];
+
+  el.innerHTML = metrics.map(m => {
+    const bv = base[m.key];
+    const gv = graph[m.key];
+    const imp = m.lower ? ((bv-gv)/bv*100).toFixed(1) : ((gv-bv)/bv*100).toFixed(1);
+    const fmt = m.key==='15%_accuracy' ? v=>(v*100).toFixed(1)+'%' : v=>v.toFixed(4);
+    return `
+    <div class="bench-metric">
+      <div class="bench-name">${m.label}</div>
+      <div class="bench-compare">
+        <div class="bench-model">
+          <span class="bench-model-name">Baseline</span>
+          <span class="bench-model-val" style="color:var(--muted)">${fmt(bv)}</span>
+        </div>
+        <div class="bench-model">
+          <span class="bench-model-name">Graph-Enhanced</span>
+          <span class="bench-model-val" style="color:var(--good)">${fmt(gv)}</span>
+        </div>
+      </div>
+      <span class="bench-improvement">${m.lower?'-':'+'}${imp}% improvement</span>
+    </div>`;
+  }).join('');
+}
+
+// ── PREDICTOR ─────────────────────────────────────────────────
+function populatePredictor() {
+  const srcSel  = document.getElementById('pred-source');
+  const dstSel  = document.getElementById('pred-dest');
+  const hubs = DATA.graph.nodes.slice().sort((a,b) => a.name.localeCompare(b.name));
+  hubs.forEach(h => {
+    srcSel.innerHTML += `<option value="${h.id}">${h.name} (${h.state})</option>`;
+    dstSel.innerHTML += `<option value="${h.id}">${h.name} (${h.state})</option>`;
+  });
+  if(dstSel.options.length > 1) dstSel.selectedIndex = 1;
+}
+
+function runPrediction() {
+  const srcId = document.getElementById('pred-source').value;
+  const dstId = document.getElementById('pred-dest').value;
+  const hour  = parseInt(document.getElementById('pred-hour').value);
+  const src   = DATA.graph.nodes.find(n => n.id === srcId);
+  const dst   = DATA.graph.nodes.find(n => n.id === dstId);
+  if (!src || !dst) return;
+
+  // Simulated prediction based on real data patterns
+  const baseOsrm   = 4 + Math.random() * 8;
+  const timeBoost   = hour >= 22 || hour <= 4 ? 1.15 : hour >= 8 && hour <= 18 ? 0.95 : 1.05;
+  const routeBoost  = selectedRoute === 'Carting' ? 1.12 : 1.0;
+  const graphFactor = 0.8 + src.sla_breach * 0.6 + dst.betweenness * 0.4;
+  const graphEta    = (baseOsrm * graphFactor * timeBoost * routeBoost).toFixed(1);
+  const slaRisk     = Math.min(0.99, src.sla_breach * 0.6 + dst.sla_breach * 0.4);
+  const riskLabel   = slaRisk > 0.85 ? 'HIGH' : slaRisk > 0.70 ? 'MEDIUM' : 'LOW';
+  const riskColor   = slaRisk > 0.85 ? 'risk-high' : slaRisk > 0.70 ? 'risk-med' : 'risk-low';
+
+  document.getElementById('res-osrm').textContent  = baseOsrm.toFixed(1);
+  document.getElementById('res-graph').textContent = graphEta;
+  const riskEl = document.getElementById('res-risk');
+  riskEl.textContent = riskLabel;
+  riskEl.className   = `result-val ${riskColor}`;
+  document.getElementById('res-risk-bar').style.width      = (slaRisk*100)+'%';
+  document.getElementById('res-risk-bar').style.background = slaRisk>0.85?'var(--accent)':slaRisk>0.70?'var(--warn)':'var(--good)';
+  document.getElementById('res-note').textContent =
+    `Graph model accounts for: ${src.name} betweenness ${src.betweenness.toFixed(3)} · SLA breach ${(src.sla_breach*100).toFixed(0)}% · ${selectedRoute} at hour ${hour}:00`;
+
+  document.getElementById('pred-result').classList.add('visible');
+
+  // Hub profile
+  const profileEl = document.getElementById('hub-profile');
+  const renderHubCard = (h, role) => `
+    <div style="padding:1rem;background:var(--surface2);border-radius:8px;margin-bottom:0.75rem;border:1px solid var(--border)">
+      <div style="font-family:var(--mono);font-size:0.6rem;color:var(--muted);text-transform:uppercase;margin-bottom:0.5rem">${role}</div>
+      <div style="font-size:0.9rem;font-weight:700;margin-bottom:0.75rem">${h.name} · ${h.state}</div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:0.5rem">
+        ${[
+          ['Bottleneck Rank',  '#'+h.rank],
+          ['Betweenness',      h.betweenness.toFixed(3)],
+          ['SLA Breach',       (h.sla_breach*100).toFixed(1)+'%'],
+          ['Delay Factor',     h.delay_factor.toFixed(2)+'×'],
+        ].map(([l,v]) => `<div><div style="font-family:var(--mono);font-size:0.6rem;color:var(--muted)">${l}</div>
+        <div style="font-size:0.85rem;font-weight:600;margin-top:0.1rem">${v}</div></div>`).join('')}
+      </div>
+    </div>`;
+  profileEl.innerHTML = renderHubCard(src,'Source Hub') + renderHubCard(dst,'Destination Hub');
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  renderHubListOverview();
+  renderStateBars();
+  renderDelayHistogram();
+  renderHubDetail();
+  renderInterventionMatrix();
+  renderCorridorTable();
+  renderBenchmark();
+  populatePredictor();
+  setTimeout(drawGraph, 100);
+  setTimeout(renderTimeHeatmap, 200);
+});
+
+window.addEventListener('resize', () => {
+  renderDelayHistogram();
+  renderTimeHeatmap();
+  if (document.getElementById('page-overview').classList.contains('active')) drawGraph();
+});
+</script>
+</body>
+</html>

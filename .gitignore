@@ -32,8 +32,12 @@ data/processed/*.json
 *.pkl
 *.pickle
 
-# But keep the summary json — it's small and useful
+# But keep the summary and deployment data — it's small and useful for production
 !data/processed/graph_summary.json
+!data/processed/frontend_data.json
+!data/processed/node_metrics.csv
+!data/processed/corridor_aggregates.csv
+!data/processed/model_benchmark.csv
 
 # Outputs (generated visualizations)
 outputs/phase2_visuals/*.png

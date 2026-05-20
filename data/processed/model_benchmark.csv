@@ -1,0 +1,3 @@
+model,MAE,RMSE,15%_accuracy
+Baseline,0.829,1.4467,0.2383
+Graph-Enhanced,0.7002,1.2336,0.3075
